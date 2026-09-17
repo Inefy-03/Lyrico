@@ -47,7 +47,8 @@
     <string name="search_source_tab_style_text_only">Text only</string>
     <string name="search_source_tab_style_icon_and_text">Icon and text</string>
     <string name="search_result_track_of_disc">track %1$s of disc %2$s</string>
-    <string name="local_search_hint">Search title / artist / album</string>
+    <string name="local_search_hint">Search song metadata</string>
+    <string name="search_field_preview">%1$s: %2$s</string>
 
     <!-- General -->
     <string name="settings_title">Settings</string>

@@ -71,8 +71,9 @@ fun SongListItem(
     isSelected: Boolean = false,
     swipeSelectionLabel: String? = null,
     swipeSelectionSecondaryLabel: String? = null,
-    lyricPreview: String? = null,
-    lyricMatchQuery: String? = null,
+    previewLabel: String? = null,
+    previewText: String? = null,
+    previewMatchQuery: String? = null,
     showTrackNumbers: Boolean = false,
     onClick: () -> Unit,
     onToggleSelection: (() -> Unit)? = null,
@@ -325,11 +326,13 @@ fun SongListItem(
                             )
                         }
                     }
-                    lyricPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                    previewText?.takeIf { it.isNotBlank() }?.let { preview ->
                         Text(
                             text = highlightedLyricPreview(
-                                text = stringResource(R.string.lyric_preview_text, preview),
-                                query = lyricMatchQuery.orEmpty(),
+                                text = previewLabel
+                                    ?.let { stringResource(R.string.search_field_preview, it, preview) }
+                                    ?: preview,
+                                query = previewMatchQuery.orEmpty(),
                                 highlightColor = MiuixTheme.colorScheme.primary
                             ),
                             color = MiuixTheme.colorScheme.onSurfaceContainerVariant,

@@ -259,14 +259,21 @@ interface SongDao {
           AND (
               s.title LIKE '%' || :query || '%'
               OR s.artist LIKE '%' || :query || '%'
+              OR s.albumArtist LIKE '%' || :query || '%'
               OR s.album LIKE '%' || :query || '%'
-              OR s.fileName LIKE '%' || :query || '%'
+              OR s.date LIKE '%' || :query || '%'
+              OR s.language LIKE '%' || :query || '%'
+              OR s.genre LIKE '%' || :query || '%'
+              OR s.lyricist LIKE '%' || :query || '%'
+              OR s.composer LIKE '%' || :query || '%'
+              OR s.copyright LIKE '%' || :query || '%'
+              OR s.comment LIKE '%' || :query || '%'
           )
         ORDER BY
             CASE
                 WHEN s.title LIKE :query || '%' THEN 0
-                WHEN s.fileName LIKE :query || '%' THEN 1
-                WHEN s.artist LIKE :query || '%' THEN 2
+                WHEN s.artist LIKE :query || '%' THEN 1
+                WHEN s.albumArtist LIKE :query || '%' THEN 2
                 WHEN s.album LIKE :query || '%' THEN 3
                 ELSE 4
             END,

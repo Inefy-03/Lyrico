@@ -52,6 +52,7 @@ import com.lonx.lyrico.data.model.entity.AlbumEntity
 import com.lonx.lyrico.data.model.entity.ArtistEntity
 import com.lonx.lyrico.data.model.entity.SongEntity
 import com.lonx.lyrico.data.model.search.LocalLyricSearchResult
+import com.lonx.lyrico.data.model.search.LocalSearchField
 import com.lonx.lyrico.data.model.search.LocalSearchUiState
 import com.lonx.lyrico.ui.components.base.PillButton
 import com.lonx.lyrico.ui.components.base.PillButtonDefaults
@@ -134,13 +135,11 @@ fun LocalSearchScreen(
     var showDetailSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    val hasResults = uiState.songs.isNotEmpty() ||
-        uiState.albums.isNotEmpty() ||
-        uiState.artists.isNotEmpty() ||
-        uiState.lyricMatches.isNotEmpty()
+    val currentTab = searchTabs.getOrElse(pagerState.currentPage) { LocalSearchTab.All }
     val visibleSongs = visibleSongsForTab(
-        tab = searchTabs.getOrElse(pagerState.currentPage) { LocalSearchTab.All },
-        uiState = uiState
+        tab = currentTab,
+        uiState = uiState,
+        query = searchQuery
     )
     val searchState = rememberTextFieldState(initialText = searchQuery)
 
@@ -282,7 +281,6 @@ fun LocalSearchScreen(
                     tab = searchTabs.getOrElse(page) { LocalSearchTab.All },
                     uiState = uiState,
                     searchQuery = searchQuery,
-                    hasAnyResults = hasResults,
                     isSelectionMode = isSelectionMode,
                     selectedSongUris = selectedSongUris,
                     swipeSelectionLabel = swipeSelectionLabel,
@@ -350,12 +348,23 @@ fun LocalSearchScreen(
     }
 }
 
-private enum class LocalSearchTab(val labelRes: Int) {
+private enum class LocalSearchTab(
+    val labelRes: Int,
+    val field: LocalSearchField? = null
+) {
     All(R.string.search_type_all),
-    Songs(R.string.search_section_songs),
-    Albums(R.string.search_section_albums),
-    Artists(R.string.search_section_artists),
-    Lyrics(R.string.label_lyrics)
+    Title(LocalSearchField.TITLE.labelRes, LocalSearchField.TITLE),
+    Artists(LocalSearchField.ARTIST.labelRes, LocalSearchField.ARTIST),
+    Albums(LocalSearchField.ALBUM.labelRes, LocalSearchField.ALBUM),
+    Lyrics(R.string.label_lyrics),
+    AlbumArtist(LocalSearchField.ALBUM_ARTIST.labelRes, LocalSearchField.ALBUM_ARTIST),
+    Date(LocalSearchField.DATE.labelRes, LocalSearchField.DATE),
+    Language(LocalSearchField.LANGUAGE.labelRes, LocalSearchField.LANGUAGE),
+    Genre(LocalSearchField.GENRE.labelRes, LocalSearchField.GENRE),
+    Lyricist(LocalSearchField.LYRICIST.labelRes, LocalSearchField.LYRICIST),
+    Composer(LocalSearchField.COMPOSER.labelRes, LocalSearchField.COMPOSER),
+    Copyright(LocalSearchField.COPYRIGHT.labelRes, LocalSearchField.COPYRIGHT),
+    Comment(LocalSearchField.COMMENT.labelRes, LocalSearchField.COMMENT)
 }
 
 @Composable
@@ -394,7 +403,6 @@ private fun LocalSearchResultsPage(
     tab: LocalSearchTab,
     uiState: LocalSearchUiState,
     searchQuery: String,
-    hasAnyResults: Boolean,
     isSelectionMode: Boolean,
     selectedSongUris: Set<String>,
     swipeSelectionLabel: String,
@@ -409,7 +417,8 @@ private fun LocalSearchResultsPage(
     onShowSongMenu: (SongEntity) -> Unit
 ) {
     val listState = rememberLazyListState()
-    val pageSongs = visibleSongsForTab(tab, uiState)
+    val pageSongs = visibleSongsForTab(tab, uiState, searchQuery)
+    val hasResults = hasResultsForTab(tab, uiState, searchQuery)
 
     LazyColumn(
         modifier = Modifier
@@ -424,15 +433,17 @@ private fun LocalSearchResultsPage(
         ),
         overscrollEffect = null
     ) {
-        if (searchQuery.isNotBlank() && !hasAnyResults) {
+        if (searchQuery.isNotBlank() && !hasResults) {
             item {
                 SearchEmptyCard()
             }
         }
 
-        if (tab == LocalSearchTab.All || tab == LocalSearchTab.Songs) {
-            SongsSection(
-                songs = uiState.songs,
+        if (tab == LocalSearchTab.All) {
+            FieldSongsSection(
+                field = LocalSearchField.TITLE,
+                songs = songsMatching(LocalSearchField.TITLE, uiState, searchQuery),
+                query = searchQuery,
                 isSelectionMode = isSelectionMode,
                 selectedSongUris = selectedSongUris,
                 swipeSelectionLabel = swipeSelectionLabel,
@@ -443,20 +454,53 @@ private fun LocalSearchResultsPage(
                 onSwipeSelection = onSwipeSelection,
                 onShowSongMenu = onShowSongMenu
             )
-        }
-
-        if (tab == LocalSearchTab.All || tab == LocalSearchTab.Albums) {
-            AlbumsSection(
-                albums = uiState.albums,
-                onAlbumClick = onAlbumClick
-            )
-        }
-
-        if (tab == LocalSearchTab.All || tab == LocalSearchTab.Artists) {
             ArtistsSection(
                 artists = uiState.artists,
                 onArtistClick = onArtistClick
             )
+            AlbumsSection(
+                albums = uiState.albums,
+                onAlbumClick = onAlbumClick
+            )
+            songResultFields
+                .filterNot { it == LocalSearchField.TITLE }
+                .forEach { field ->
+                    FieldSongsSection(
+                        field = field,
+                        songs = songsMatching(field, uiState, searchQuery),
+                        query = searchQuery,
+                        isSelectionMode = isSelectionMode,
+                        selectedSongUris = selectedSongUris,
+                        swipeSelectionLabel = swipeSelectionLabel,
+                        swipeSelectionSecondaryLabel = swipeSelectionSecondaryLabel,
+                        pageSongs = pageSongs,
+                        onSongClick = onSongClick,
+                        onToggleSelection = onToggleSelection,
+                        onSwipeSelection = onSwipeSelection,
+                        onShowSongMenu = onShowSongMenu
+                    )
+                }
+        } else if (tab == LocalSearchTab.Artists) {
+            ArtistsSection(artists = uiState.artists, onArtistClick = onArtistClick)
+        } else if (tab == LocalSearchTab.Albums) {
+            AlbumsSection(albums = uiState.albums, onAlbumClick = onAlbumClick)
+        } else {
+            tab.field?.let { field ->
+                FieldSongsSection(
+                    field = field,
+                    songs = songsMatching(field, uiState, searchQuery),
+                    query = searchQuery,
+                    isSelectionMode = isSelectionMode,
+                    selectedSongUris = selectedSongUris,
+                    swipeSelectionLabel = swipeSelectionLabel,
+                    swipeSelectionSecondaryLabel = swipeSelectionSecondaryLabel,
+                    pageSongs = pageSongs,
+                    onSongClick = onSongClick,
+                    onToggleSelection = onToggleSelection,
+                    onSwipeSelection = onSwipeSelection,
+                    onShowSongMenu = onShowSongMenu
+                )
+            }
         }
 
         if (uiState.lyricSearchEnabled && (tab == LocalSearchTab.All || tab == LocalSearchTab.Lyrics)) {
@@ -479,20 +523,51 @@ private fun LocalSearchResultsPage(
 
 private fun visibleSongsForTab(
     tab: LocalSearchTab,
-    uiState: LocalSearchUiState
+    uiState: LocalSearchUiState,
+    query: String
 ): List<SongEntity> {
-    return when (tab) {
-        LocalSearchTab.All -> (uiState.songs + uiState.lyricMatches.map { it.song })
+    return when {
+        tab == LocalSearchTab.All -> (
+            songResultFields.flatMap { songsMatching(it, uiState, query) } +
+                uiState.lyricMatches.map { it.song }
+            )
             .distinctBy { it.uri }
-        LocalSearchTab.Songs -> uiState.songs
-        LocalSearchTab.Lyrics -> uiState.lyricMatches.map { it.song }
-        LocalSearchTab.Albums,
-        LocalSearchTab.Artists -> emptyList()
+        tab == LocalSearchTab.Lyrics -> uiState.lyricMatches.map { it.song }
+        tab == LocalSearchTab.Albums || tab == LocalSearchTab.Artists -> emptyList()
+        tab.field != null -> songsMatching(tab.field, uiState, query)
+        else -> emptyList()
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.SongsSection(
+private fun hasResultsForTab(
+    tab: LocalSearchTab,
+    uiState: LocalSearchUiState,
+    query: String
+): Boolean = when {
+    tab == LocalSearchTab.All ->
+        uiState.songs.isNotEmpty() || uiState.albums.isNotEmpty() ||
+            uiState.artists.isNotEmpty() || uiState.lyricMatches.isNotEmpty()
+    tab == LocalSearchTab.Artists -> uiState.artists.isNotEmpty()
+    tab == LocalSearchTab.Albums -> uiState.albums.isNotEmpty()
+    tab == LocalSearchTab.Lyrics -> uiState.lyricMatches.isNotEmpty()
+    tab.field != null -> songsMatching(tab.field, uiState, query).isNotEmpty()
+    else -> false
+}
+
+private val songResultFields = LocalSearchField.entries.filterNot {
+    it == LocalSearchField.ARTIST || it == LocalSearchField.ALBUM
+}
+
+private fun songsMatching(
+    field: LocalSearchField,
+    uiState: LocalSearchUiState,
+    query: String
+): List<SongEntity> = uiState.songs.filter { field.matches(it, query) }
+
+private fun androidx.compose.foundation.lazy.LazyListScope.FieldSongsSection(
+    field: LocalSearchField,
     songs: List<SongEntity>,
+    query: String,
     isSelectionMode: Boolean,
     selectedSongUris: Set<String>,
     swipeSelectionLabel: String,
@@ -507,13 +582,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.SongsSection(
 
     item {
         SearchSectionHeader(
-            title = stringResource(R.string.search_section_songs),
+            title = stringResource(field.labelRes),
             subtitle = stringResource(R.string.song_count, songs.size)
         )
     }
     items(
         items = songs,
-        key = ::localSearchSongKey
+        key = { song -> "local-search-${field.name}-${localSearchSongKey(song)}" }
     ) { song ->
         LocalSearchSongItem(
             song = song,
@@ -521,8 +596,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.SongsSection(
             isSelected = selectedSongUris.contains(song.uri),
             swipeSelectionLabel = swipeSelectionLabel,
             swipeSelectionSecondaryLabel = swipeSelectionSecondaryLabel,
-            lyricPreview = null,
-            lyricMatchQuery = null,
+            previewLabel = field.takeUnless { it == LocalSearchField.TITLE }
+                ?.let { stringResource(it.labelRes) },
+            previewText = field.takeUnless { it == LocalSearchField.TITLE }?.valueOf(song),
+            previewMatchQuery = query,
             pageSongs = pageSongs,
             onSongClick = onSongClick,
             onToggleSelection = onToggleSelection,
@@ -563,8 +640,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.LyricsSection(
             isSelected = selectedSongUris.contains(match.song.uri),
             swipeSelectionLabel = swipeSelectionLabel,
             swipeSelectionSecondaryLabel = swipeSelectionSecondaryLabel,
-            lyricPreview = match.lyricLine,
-            lyricMatchQuery = query,
+            previewLabel = stringResource(R.string.label_lyrics),
+            previewText = match.lyricLine,
+            previewMatchQuery = query,
             pageSongs = pageSongs,
             onSongClick = onSongClick,
             onToggleSelection = onToggleSelection,
@@ -627,8 +705,9 @@ private fun LocalSearchSongItem(
     isSelected: Boolean,
     swipeSelectionLabel: String,
     swipeSelectionSecondaryLabel: String?,
-    lyricPreview: String?,
-    lyricMatchQuery: String?,
+    previewLabel: String?,
+    previewText: String?,
+    previewMatchQuery: String?,
     pageSongs: List<SongEntity>,
     onSongClick: (SongEntity) -> Unit,
     onToggleSelection: (SongEntity) -> Unit,
@@ -641,8 +720,9 @@ private fun LocalSearchSongItem(
         isSelected = isSelected,
         swipeSelectionLabel = swipeSelectionLabel,
         swipeSelectionSecondaryLabel = swipeSelectionSecondaryLabel,
-        lyricPreview = lyricPreview,
-        lyricMatchQuery = lyricMatchQuery,
+        previewLabel = previewLabel,
+        previewText = previewText,
+        previewMatchQuery = previewMatchQuery,
         onClick = { onSongClick(song) },
         onToggleSelection = { onToggleSelection(song) },
         onSwipeSelection = { onSwipeSelection(song, pageSongs) },

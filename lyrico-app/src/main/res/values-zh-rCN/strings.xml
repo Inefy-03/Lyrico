@@ -29,7 +29,8 @@
     <string name="apply_action">应用</string>
     <string name="apply_lyrics_only_action">仅歌词</string>
     <string name="cd_no_results">搜索结果为空</string>
-    <string name="local_search_hint">搜索标题 / 艺术家 / 专辑</string>
+    <string name="local_search_hint">搜索歌曲元数据</string>
+    <string name="search_field_preview">%1$s：%2$s</string>
 
     <!-- 通用 -->
     <string name="settings_title">设置</string>
