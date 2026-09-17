@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -26,6 +27,9 @@ import com.lonx.lyrico.App.Companion.OWNER_ID
 import com.lonx.lyrico.App.Companion.REPO_NAME
 import com.lonx.lyrico.App.Companion.TELEGRAM_GROUP_LINK
 import com.lonx.lyrico.BuildConfig
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.R
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
 import com.lonx.lyrico.utils.UpdateEffect
@@ -76,26 +80,32 @@ fun AboutScreen(
         is UiError.Message -> e.text
     }
     val topAppBarScrollBehavior = MiuixScrollBehavior()
+    val topBarBackdrop = rememberBarBlurBackdrop()
     Scaffold(
         topBar = {
-            SmallTopAppBar(
-                title = stringResource(R.string.about_title),
-                navigationIcon = {
-                    IconButton(
-                        onClick = { navigator.popBackStack() }
-                    ) {
-                        Icon(
-                            MiuixIcons.Back,
-                            contentDescription = stringResource(R.string.action_back)
-                        )
-                    }
-                },
-                scrollBehavior = topAppBarScrollBehavior
-            )
+            BlurredTopBar(backdrop = topBarBackdrop) {
+                SmallTopAppBar(
+                    color = Color.Transparent,
+                    defaultWindowInsetsPadding = false,
+                    title = stringResource(R.string.about_title),
+                    navigationIcon = {
+                        IconButton(
+                            onClick = { navigator.popBackStack() }
+                        ) {
+                            Icon(
+                                MiuixIcons.Back,
+                                contentDescription = stringResource(R.string.action_back)
+                            )
+                        }
+                    },
+                    scrollBehavior = topAppBarScrollBehavior
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
+                .blurSource(topBarBackdrop)
                 .scrollEndHaptic()
                 .overScrollVertical()
                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)

@@ -19,12 +19,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.R
 import com.lonx.lyrico.data.model.BatchTaskStatus
 import com.lonx.lyrico.data.model.BatchTaskType
@@ -189,47 +193,53 @@ fun BatchTaskListScreen(
         }
     }
 
+    val topBarBackdrop = rememberBarBlurBackdrop()
     Scaffold(
         topBar = {
-            SmallTopAppBar(
-                title = stringResource(R.string.batch_task_list_title),
-                navigationIcon = {
-                    IconButton(
-                        onClick = { navigator.popBackStack() }
-                    ) {
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = stringResource(R.string.action_back)
-                        )
-                    }
-                },
-                actions = {
-                    val canClearFinishedTasks = deletableFilteredTaskIds.isNotEmpty()
-                    IconButton(
-                        enabled = canClearFinishedTasks,
-                        onClick = {
-                            if (canClearFinishedTasks) {
-                                showClearDialog = true
-                            }
+            BlurredTopBar(backdrop = topBarBackdrop) {
+                SmallTopAppBar(
+                    color = Color.Transparent,
+                    defaultWindowInsetsPadding = false,
+                    title = stringResource(R.string.batch_task_list_title),
+                    navigationIcon = {
+                        IconButton(
+                            onClick = { navigator.popBackStack() }
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = stringResource(R.string.action_back)
+                            )
                         }
-                    ) {
-                        Icon(
-                            MiuixIcons.Delete,
-                            contentDescription = stringResource(R.string.batch_task_clear_title),
-                            tint = if (canClearFinishedTasks) {
-                                MiuixTheme.colorScheme.error
-                            } else {
-                                MiuixTheme.colorScheme.onSurfaceVariantActions
+                    },
+                    actions = {
+                        val canClearFinishedTasks = deletableFilteredTaskIds.isNotEmpty()
+                        IconButton(
+                            enabled = canClearFinishedTasks,
+                            onClick = {
+                                if (canClearFinishedTasks) {
+                                    showClearDialog = true
+                                }
                             }
-                        )
-                    }
-                },
-                scrollBehavior = topAppBarScrollBehavior
-            )
+                        ) {
+                            Icon(
+                                MiuixIcons.Delete,
+                                contentDescription = stringResource(R.string.batch_task_clear_title),
+                                tint = if (canClearFinishedTasks) {
+                                    MiuixTheme.colorScheme.error
+                                } else {
+                                    MiuixTheme.colorScheme.onSurfaceVariantActions
+                                }
+                            )
+                        }
+                    },
+                    scrollBehavior = topAppBarScrollBehavior
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
+                .blurSource(topBarBackdrop)
                 .scrollEndHaptic()
                 .overScrollVertical()
                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)

@@ -23,8 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lonx.lyrico.R
 import com.lonx.lyrico.data.model.ArtistSortBy
 import com.lonx.lyrico.data.model.ArtistSortInfo
@@ -32,14 +32,13 @@ import com.lonx.lyrico.ui.components.CoverCandidate
 import com.lonx.lyrico.ui.components.artist.ArtistListItem
 import com.lonx.lyrico.ui.components.bar.AlphabetSideBar
 import com.lonx.lyrico.ui.components.bar.rememberAlphabetSideBarScrollController
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.ui.components.library.LibraryEmptyState
-import com.lonx.lyrico.ui.components.library.LibraryBlurredBar
-import com.lonx.lyrico.ui.components.library.LocalLibraryBarBlurEnabled
 import com.lonx.lyrico.ui.components.library.LocalLibraryBottomContentPadding
 import com.lonx.lyrico.ui.components.library.libraryOverlayInsets
 import com.lonx.lyrico.ui.components.library.libraryScrollbarOverlay
-import com.lonx.lyrico.ui.components.library.rememberBlurBackdrop
-import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
 import com.lonx.lyrico.ui.components.scaffoldTopHorizontalPadding
 import com.lonx.lyrico.viewmodel.ArtistLibraryViewModel
@@ -52,6 +51,7 @@ import my.nanihadesuka.compose.InternalLazyVerticalGridScrollbar
 import my.nanihadesuka.compose.ScrollbarSelectionMode
 import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.androidx.compose.koinViewModel
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -67,10 +67,8 @@ import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 
 private val SECTIONS_ASC = listOf("0") + ('A'..'Z').map { it.toString() } + listOf("#")
 private val SECTIONS_DESC = SECTIONS_ASC.asReversed()
@@ -89,7 +87,7 @@ fun ArtistsPage(
     val artistCoverCandidates by viewModel.artistCoverCandidates.collectAsStateWithLifecycle()
     val sortInfo by viewModel.sortInfo.collectAsStateWithLifecycle()
     val topAppBarScrollBehavior = MiuixScrollBehavior()
-    val topBarBackdrop = rememberBlurBackdrop(LocalLibraryBarBlurEnabled.current)
+    val topBarBackdrop = rememberBarBlurBackdrop()
     val gridState = rememberLazyGridState()
     val alphabetScrollController = rememberAlphabetSideBarScrollController(gridState)
 
@@ -119,50 +117,47 @@ fun ArtistsPage(
     )
     Scaffold(
         topBar = {
-            LibraryBlurredBar(
-                backdrop = topBarBackdrop,
-                modifier = Modifier.scaffoldTopAppBarInsetsPadding(),
-            ) {
-            SmallTopAppBar(
-                title = stringResource(R.string.artist_list_title, artists.size),
-                color = if (topBarBackdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface,
-                modifier = Modifier,
-                scrollBehavior = topAppBarScrollBehavior,
-                defaultWindowInsetsPadding = false,
-                navigationIcon = {
-                    IconButton(onClick = { navigator.navigate(SettingsDestination()) }) {
-                        Icon(
-                            imageVector = MiuixIcons.Settings,
-                            contentDescription = null
-                        )
+            BlurredTopBar(backdrop = topBarBackdrop) {
+                SmallTopAppBar(
+                    title = stringResource(R.string.artist_list_title, artists.size),
+                    color = Color.Transparent,
+                    modifier = Modifier,
+                    scrollBehavior = topAppBarScrollBehavior,
+                    defaultWindowInsetsPadding = false,
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.navigate(SettingsDestination()) }) {
+                            Icon(
+                                imageVector = MiuixIcons.Settings,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { navigator.navigate(LocalSearchDestination) }) {
+                            Icon(
+                                imageVector = MiuixIcons.Search,
+                                contentDescription = stringResource(R.string.cd_search)
+                            )
+                        }
+                        OverlayIconDropdownMenu(
+                            entries = listOf(
+                                artistSortDropdownEntry(sortInfo, viewModel::onSortChange),
+                            )
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Sort,
+                                contentDescription = stringResource(R.string.cd_sort)
+                            )
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { navigator.navigate(LocalSearchDestination) }) {
-                        Icon(
-                            imageVector = MiuixIcons.Search,
-                            contentDescription = stringResource(R.string.cd_search)
-                        )
-                    }
-                    OverlayIconDropdownMenu(
-                        entries = listOf(
-                            artistSortDropdownEntry(sortInfo, viewModel::onSortChange),
-                        )
-                    ) {
-                        Icon(
-                            imageVector = MiuixIcons.Sort,
-                            contentDescription = stringResource(R.string.cd_sort)
-                        )
-                    }
-                }
-            )
+                )
             }
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (topBarBackdrop != null) Modifier.layerBackdrop(topBarBackdrop) else Modifier)
+                .blurSource(topBarBackdrop)
         ) {
             if (artists.isEmpty()) {
                 Box(

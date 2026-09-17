@@ -3,10 +3,9 @@ package com.lonx.lyrico.screens
 import android.annotation.SuppressLint
 import android.text.format.Formatter
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.layout.Arrangement
@@ -36,27 +35,32 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lonx.lyrico.BuildConfig
 import com.lonx.lyrico.R
-import com.lonx.lyrico.data.model.ArtistSeparator
 import com.lonx.lyrico.data.model.AppLanguage
+import com.lonx.lyrico.data.model.ArtistSeparator
 import com.lonx.lyrico.data.model.ConversionMode
 import com.lonx.lyrico.data.model.FloatingBarEffect
 import com.lonx.lyrico.data.model.SearchSourceTabStyle
+import com.lonx.lyrico.data.model.ThemeMode
 import com.lonx.lyrico.data.model.lyrics.LyricFormat
 import com.lonx.lyrico.data.model.lyrics.visibleLyricLineTracks
-import com.lonx.lyrico.data.model.ThemeMode
-import com.lonx.lyrico.ui.components.base.YesNoBottomSheet
-import com.lonx.lyrico.ui.components.lyrics.LyricLineOrderBottomSheetContent
+import com.lonx.lyrico.data.repository.SettingsRepository
 import com.lonx.lyrico.ui.components.RoundedRectanglePainter
+import com.lonx.lyrico.ui.components.base.YesNoBottomSheet
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.ui.components.getSystemWallpaperColor
+import com.lonx.lyrico.ui.components.lyrics.LyricLineOrderBottomSheetContent
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
 import com.lonx.lyrico.ui.theme.KeyColors
 import com.lonx.lyrico.viewmodel.FolderManagerViewModel
@@ -66,23 +70,19 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AboutDestination
 import com.ramcosta.composedestinations.generated.destinations.AppLogsDestination
+import com.ramcosta.composedestinations.generated.destinations.ArtistPosterFoldersDestination
 import com.ramcosta.composedestinations.generated.destinations.ArtistSplitSettingsDestination
 import com.ramcosta.composedestinations.generated.destinations.BatchTaskListDestination
 import com.ramcosta.composedestinations.generated.destinations.EditFieldSettingsDestination
 import com.ramcosta.composedestinations.generated.destinations.FolderManagerDestination
-import com.ramcosta.composedestinations.generated.destinations.ArtistPosterFoldersDestination
-import com.lonx.lyrico.data.repository.SettingsRepository
-import org.koin.compose.koinInject
 import com.ramcosta.composedestinations.generated.destinations.LyricsCleanupRulesDestination
 import com.ramcosta.composedestinations.generated.destinations.PluginManagerDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickjsTestDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import com.lonx.lyrico.ui.components.library.LibraryBlurredBar
-import com.lonx.lyrico.ui.components.library.rememberBlurBackdrop
-import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
-import top.yukonga.miuix.kmp.blur.layerBackdrop
+import org.koin.compose.koinInject
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -111,9 +111,8 @@ import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import top.yukonga.miuix.kmp.window.WindowDialog
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
-import kotlin.math.roundToInt
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @SuppressLint("LocalContextGetResourceValueCall")
 @Composable
@@ -268,16 +267,13 @@ fun SettingsScreen(
         }
     }
     val topAppBarScrollBehavior = MiuixScrollBehavior()
-    val topBarBackdrop = rememberBlurBackdrop(enableBlur = barBlurEnabled)
+    val topBarBackdrop = rememberBarBlurBackdrop(enabled = barBlurEnabled)
     Scaffold(
         topBar = {
-            LibraryBlurredBar(
-                backdrop = topBarBackdrop,
-                modifier = Modifier.scaffoldTopAppBarInsetsPadding(),
-            ) {
+            BlurredTopBar(backdrop = topBarBackdrop) {
                 SmallTopAppBar(
                     title = stringResource(R.string.settings_title),
-                    color = if (topBarBackdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface,
+                    color = Color.Transparent,
                     defaultWindowInsetsPadding = false,
                     navigationIcon = {
                         IconButton(
@@ -366,13 +362,7 @@ fun SettingsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    if (topBarBackdrop != null) {
-                        Modifier.layerBackdrop(topBarBackdrop)
-                    } else {
-                        Modifier
-                    }
-                ),
+                .blurSource(topBarBackdrop),
         ) {
         LazyColumn(
             modifier = Modifier

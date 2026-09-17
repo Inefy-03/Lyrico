@@ -1,9 +1,9 @@
 package com.lonx.lyrico.screens
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -28,11 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lonx.lyrico.R
 import com.lonx.lyrico.ui.components.FolderManagementItem
-import com.lonx.lyrico.ui.components.library.LibraryBlurredBar
-import com.lonx.lyrico.ui.components.library.rememberBarBlurEnabled
-import com.lonx.lyrico.ui.components.library.rememberBlurBackdrop
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
-import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
 import com.lonx.lyrico.viewmodel.ArtistPosterFolder
 import com.lonx.lyrico.viewmodel.ArtistPosterFoldersUiState
 import com.lonx.lyrico.viewmodel.ArtistPosterFoldersViewModel
@@ -42,7 +41,6 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import org.koin.androidx.compose.koinViewModel
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
@@ -77,17 +75,14 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
     val currentFolder = state.folders.find { it.uri == currentFolderUri }
     BackHandler(currentFolder != null) { currentFolderUri = null }
     val scrollBehavior = MiuixScrollBehavior()
-    val topBarBackdrop = rememberBlurBackdrop(enableBlur = rememberBarBlurEnabled())
+    val topBarBackdrop = rememberBarBlurBackdrop()
 
     Scaffold(
         topBar = {
-            LibraryBlurredBar(
-                backdrop = topBarBackdrop,
-                modifier = Modifier.scaffoldTopAppBarInsetsPadding()
-            ) {
+            BlurredTopBar(backdrop = topBarBackdrop) {
                 SmallTopAppBar(
                     title = currentFolder?.name ?: stringResource(R.string.artist_poster_folders),
-                    color = if (topBarBackdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface,
+                    color = Color.Transparent,
                     defaultWindowInsetsPadding = false,
                     navigationIcon = {
                         IconButton(onClick = { if (currentFolder != null) currentFolderUri = null else navigator.navigateUp() }) {
@@ -125,7 +120,7 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
             },
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (topBarBackdrop != null) Modifier.layerBackdrop(topBarBackdrop) else Modifier)
+                .blurSource(topBarBackdrop)
         ) { folder ->
             if (folder != null) {
                 ArtistPosterFolderContents(

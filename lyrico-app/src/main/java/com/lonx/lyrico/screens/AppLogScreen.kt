@@ -28,6 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.ClipEntry
@@ -38,6 +41,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.R
 import com.lonx.lyrico.data.model.log.AppLogLevel
 import com.lonx.lyrico.data.model.log.AppLogType
@@ -145,52 +151,60 @@ fun AppLogScreen(
         }
     }
 
+    val topBarBackdrop = rememberBarBlurBackdrop()
     Scaffold(
         topBar = {
-            SmallTopAppBar(
-                title = stringResource(R.string.app_log_title),
-                navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = stringResource(R.string.action_back)
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        enabled = filteredLogs.isNotEmpty(),
-                        onClick = {
-                            pendingExportIds = filteredLogs.map { it.id }
-                            exportLauncher.launch("lyrico_log_${System.currentTimeMillis()}.log")
+            BlurredTopBar(backdrop = topBarBackdrop) {
+                SmallTopAppBar(
+                    color = Color.Transparent,
+                    defaultWindowInsetsPadding = false,
+                    title = stringResource(R.string.app_log_title),
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.popBackStack() }) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = stringResource(R.string.action_back)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = MiuixIcons.Share,
-                            contentDescription = stringResource(R.string.action_export_logs)
-                        )
-                    }
-                    IconButton(
-                        enabled = filteredLogs.isNotEmpty(),
-                        onClick = {
-                            pendingDeleteIds = filteredLogs.map { it.id }
-                            showDeleteConfirmDialog = true
+                    },
+                    actions = {
+                        IconButton(
+                            enabled = filteredLogs.isNotEmpty(),
+                            onClick = {
+                                pendingExportIds = filteredLogs.map { it.id }
+                                exportLauncher.launch("lyrico_log_${System.currentTimeMillis()}.log")
+                            }
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Share,
+                                contentDescription = stringResource(R.string.action_export_logs)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = MiuixIcons.Delete,
-                            contentDescription = stringResource(R.string.action_delete),
-                            tint = MiuixTheme.colorScheme.error
-                        )
-                    }
-                },
-                scrollBehavior = topAppBarScrollBehavior
-            )
+                        IconButton(
+                            enabled = filteredLogs.isNotEmpty(),
+                            onClick = {
+                                pendingDeleteIds = filteredLogs.map { it.id }
+                                showDeleteConfirmDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Delete,
+                                contentDescription = stringResource(R.string.action_delete),
+                                tint = MiuixTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    scrollBehavior = topAppBarScrollBehavior
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
+                .fillMaxSize()
+                .blurSource(topBarBackdrop)
+                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
                 .scrollEndHaptic()
                 .overScrollVertical(),
             contentPadding = scaffoldContentPadding(

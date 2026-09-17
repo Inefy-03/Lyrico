@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -36,6 +37,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.R
 import com.lonx.lyrico.data.model.artist.ArtistSplitDefaults
 import com.lonx.lyrico.data.model.artist.CustomArtistSeparator
@@ -108,21 +112,27 @@ fun ArtistSplitSettingsScreen(
     }
 
     val topAppBarScrollBehavior = MiuixScrollBehavior()
+    val topBarBackdrop = rememberBarBlurBackdrop()
     Scaffold(
         topBar = {
-            SmallTopAppBar(
-                title = stringResource(R.string.artist_split_settings_title),
-                navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
-                        Icon(MiuixIcons.Back, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                scrollBehavior = topAppBarScrollBehavior
-            )
+            BlurredTopBar(backdrop = topBarBackdrop) {
+                SmallTopAppBar(
+                    color = Color.Transparent,
+                    defaultWindowInsetsPadding = false,
+                    title = stringResource(R.string.artist_split_settings_title),
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.popBackStack() }) {
+                            Icon(MiuixIcons.Back, contentDescription = stringResource(R.string.action_back))
+                        }
+                    },
+                    scrollBehavior = topAppBarScrollBehavior
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
+                .blurSource(topBarBackdrop)
                 .scrollEndHaptic()
                 .overScrollVertical()
                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)

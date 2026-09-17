@@ -86,10 +86,10 @@ import com.lonx.audiotag.model.AudioPictureType
 import com.lonx.audiotag.model.AudioTagData
 import com.lonx.audiotag.model.CustomTagField
 import com.lonx.lyrico.R
-import com.lonx.lyrico.data.editfield.EditFieldKind
-import com.lonx.lyrico.data.editfield.toEditFieldBlocks
 import com.lonx.lyrico.data.editfield.EditFieldDefinition
+import com.lonx.lyrico.data.editfield.EditFieldKind
 import com.lonx.lyrico.data.editfield.EditFieldRegistry
+import com.lonx.lyrico.data.editfield.toEditFieldBlocks
 import com.lonx.lyrico.data.model.ConversionMode
 import com.lonx.lyrico.data.model.lyrics.LyricFormat
 import com.lonx.lyrico.data.model.lyrics.LyricsProcessingOptions
@@ -98,19 +98,18 @@ import com.lonx.lyrico.data.model.search.LyricsSearchResult
 import com.lonx.lyrico.plugin.source.SearchSourceProvider
 import com.lonx.lyrico.ui.components.CoverRequest
 import com.lonx.lyrico.ui.components.base.LyricsOffsetField
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.ui.components.cover.rememberArtistPosterSource
 import com.lonx.lyrico.ui.components.crop.ImageCropper
-import com.lonx.lyrico.ui.components.getBitmap
 import com.lonx.lyrico.ui.components.crop.rememberImageCropperState
 import com.lonx.lyrico.ui.components.fab.ExpandableFabMenu
 import com.lonx.lyrico.ui.components.fab.FabMenuItem
+import com.lonx.lyrico.ui.components.getBitmap
 import com.lonx.lyrico.ui.components.player.PlayerPickerBottomSheet
 import com.lonx.lyrico.ui.components.rememberTintedPainter
 import com.lonx.lyrico.ui.components.scaffoldTopHorizontalPadding
-import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
-import com.lonx.lyrico.ui.components.library.LibraryBlurredBar
-import com.lonx.lyrico.ui.components.library.rememberBarBlurEnabled
-import com.lonx.lyrico.ui.components.library.rememberBlurBackdrop
 import com.lonx.lyrico.ui.theme.LyricoColors
 import com.lonx.lyrico.utils.CoverSourceType
 import com.lonx.lyrico.utils.LyricDecoder
@@ -119,13 +118,15 @@ import com.lonx.lyrico.viewmodel.EditMetadataViewModel
 import com.lonx.lyrico.viewmodel.isEqualIgnoringBlank
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.EditFieldSettingsDestination
 import com.ramcosta.composedestinations.generated.destinations.SearchCoverDestination
 import com.ramcosta.composedestinations.generated.destinations.SearchLyricsDestination
 import com.ramcosta.composedestinations.generated.destinations.SearchResultsDestination
-import com.ramcosta.composedestinations.generated.destinations.EditFieldSettingsDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.result.ResultRecipient
 import com.ramcosta.composedestinations.result.onResult
+import java.net.URL
+import kotlin.apply
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -142,9 +143,9 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import top.yukonga.miuix.kmp.basic.SnackbarDuration
 import top.yukonga.miuix.kmp.basic.SnackbarHost
 import top.yukonga.miuix.kmp.basic.SnackbarHostState
-import top.yukonga.miuix.kmp.basic.SnackbarDuration
 import top.yukonga.miuix.kmp.basic.SnackbarResult
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -166,14 +167,11 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.RadioButtonPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 import top.yukonga.miuix.kmp.window.WindowDialog
-import java.net.URL
-import kotlin.apply
 
 private const val LIMITED_LYRICS_INPUT_MAX_LINES = 30
 
@@ -595,7 +593,7 @@ fun EditMetadataScreen(
 
     val fieldBlocks = remember(visibleFields) { visibleFields.toEditFieldBlocks() }
     val topAppBarScrollBehavior = MiuixScrollBehavior()
-    val topBarBackdrop = rememberBlurBackdrop(enableBlur = rememberBarBlurEnabled())
+    val topBarBackdrop = rememberBarBlurBackdrop()
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -606,13 +604,10 @@ fun EditMetadataScreen(
                     ?: uiState.songInfo?.tagData?.fileName
                     ?: stringResource(R.string.edit_metadata_default_title)
 
-                LibraryBlurredBar(
-                    backdrop = topBarBackdrop,
-                    modifier = Modifier.scaffoldTopAppBarInsetsPadding()
-                ) {
+                BlurredTopBar(backdrop = topBarBackdrop) {
                     SmallTopAppBar(
                         title = titleText,
-                        color = if (topBarBackdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface,
+                        color = Color.Transparent,
                         defaultWindowInsetsPadding = false,
                         navigationIcon = {
                             IconButton(
@@ -655,13 +650,7 @@ fun EditMetadataScreen(
         ) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
-                    .then(
-                        if (topBarBackdrop != null) {
-                            Modifier.layerBackdrop(topBarBackdrop)
-                        } else {
-                            Modifier
-                        }
-                    )
+                    .blurSource(topBarBackdrop)
                     .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
                     .overScrollVertical()
                     .imePadding()

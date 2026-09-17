@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.lonx.lyrico.ui.components.blur.BlurredBar
 import com.lonx.lyrico.data.model.FloatingBarEffect
 import com.lonx.lyrico.screens.library.LibraryTab
 import top.yukonga.miuix.kmp.basic.Icon
@@ -33,13 +34,13 @@ fun LibraryBottomNavigationBar(
     backdrop: LayerBackdrop? = null,
 ) {
     val haptic = LocalHapticFeedback.current
-    LibraryBlurredBar(
+    BlurredBar(
         backdrop = backdrop,
         modifier = Modifier.fillMaxWidth(),
     ) {
         NavigationBar(
             modifier = modifier,
-            color = if (backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface,
+            color = Color.Transparent,
         ) {
             tabs.forEach { tab ->
                 NavigationBarItem(

@@ -39,11 +39,13 @@ import com.lonx.lyrico.ui.components.bar.SongBatchSelectionActions
 import com.lonx.lyrico.ui.components.library.LibraryBlurBottomBar
 import com.lonx.lyrico.ui.components.library.LibraryBottomNavigationBar
 import com.lonx.lyrico.ui.components.library.LibraryNavigationRail
-import com.lonx.lyrico.ui.components.library.LocalLibraryBarBlurEnabled
+import com.lonx.lyrico.ui.components.blur.LocalBarBlurEnabled
 import com.lonx.lyrico.ui.components.library.LocalLibraryBottomContentPadding
 import com.lonx.lyrico.ui.components.library.floatingContentBottomPadding
-import com.lonx.lyrico.ui.components.library.rememberBlurBackdrop
-import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurEnabled
+import com.lonx.lyrico.ui.components.blur.rememberBlurBackdrop
+import com.lonx.lyrico.ui.components.blur.blurSource
 import com.lonx.lyrico.ui.components.LocalScaffoldIncludesStartPadding
 import com.lonx.lyrico.ui.components.scaffoldBottomPadding
 import com.lonx.lyrico.viewmodel.SongListViewModel
@@ -81,14 +83,14 @@ fun LibraryHomeScreen(
     val settingsRepository: SettingsRepository = koinInject()
     val floatingBottomBarEnabled by settingsRepository.floatingBottomBarEnabled
         .collectAsState(initial = true)
-    val barBlurEnabled by settingsRepository.barBlurEnabled.collectAsState(initial = false)
+    val barBlurEnabled = rememberBarBlurEnabled()
     val floatingBarEffect by settingsRepository.floatingBarEffect
         .collectAsState(initial = FloatingBarEffect.NONE)
     val floatingBackdrop = rememberBlurBackdrop(
         enableBlur = floatingBottomBarEnabled && floatingBarEffect != FloatingBarEffect.NONE,
     )
-    val standardBottomBackdrop = rememberBlurBackdrop(
-        enableBlur = barBlurEnabled && !floatingBottomBarEnabled,
+    val standardBottomBackdrop = rememberBarBlurBackdrop(
+        enabled = barBlurEnabled && !floatingBottomBarEnabled,
     )
     val songs by viewModel.songs.collectAsState()
     val isSelectionMode by selectionViewModel.isSelectionMode.collectAsState(initial = false)
@@ -136,7 +138,7 @@ fun LibraryHomeScreen(
                     CompositionLocalProvider(
                         LocalScaffoldIncludesStartPadding provides false,
                         LocalLibraryBottomContentPadding provides 0.dp,
-                        LocalLibraryBarBlurEnabled provides barBlurEnabled,
+                        LocalBarBlurEnabled provides barBlurEnabled,
                     ) {
                         LibraryHomePager(
                             tabs = tabs,
@@ -154,17 +156,11 @@ fun LibraryHomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(
-                            if (floatingBackdrop != null) {
-                                Modifier.layerBackdrop(floatingBackdrop)
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .blurSource(floatingBackdrop)
                 ) {
                     CompositionLocalProvider(
                         LocalLibraryBottomContentPadding provides floatingContentPadding,
-                        LocalLibraryBarBlurEnabled provides barBlurEnabled,
+                        LocalBarBlurEnabled provides barBlurEnabled,
                     ) {
                         LibraryHomePager(
                             tabs = tabs,
@@ -202,19 +198,13 @@ fun LibraryHomeScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .then(
-                                if (standardBottomBackdrop != null) {
-                                    Modifier.layerBackdrop(standardBottomBackdrop)
-                                } else {
-                                    Modifier
-                                }
-                            ),
+                            .blurSource(standardBottomBackdrop),
                     ) {
                         CompositionLocalProvider(
                             // The pager stays behind the bar so the backdrop can sample it;
                             // lists reserve this same space at their end instead.
                             LocalLibraryBottomContentPadding provides scaffoldBottomPadding(paddingValues),
-                            LocalLibraryBarBlurEnabled provides barBlurEnabled,
+                            LocalBarBlurEnabled provides barBlurEnabled,
                         ) {
                             LibraryHomePager(
                                 tabs = tabs,

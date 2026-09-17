@@ -22,9 +22,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,14 +44,13 @@ import com.lonx.lyrico.screens.TopBarState
 import com.lonx.lyrico.ui.components.bar.AlphabetSideBar
 import com.lonx.lyrico.ui.components.bar.SongSelectionTopAppBar
 import com.lonx.lyrico.ui.components.bar.rememberAlphabetSideBarScrollController
+import com.lonx.lyrico.ui.components.blur.BlurredTopBar
+import com.lonx.lyrico.ui.components.blur.blurSource
+import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.ui.components.library.LibraryEmptyState
-import com.lonx.lyrico.ui.components.library.LibraryBlurredBar
-import com.lonx.lyrico.ui.components.library.LocalLibraryBarBlurEnabled
 import com.lonx.lyrico.ui.components.library.LocalLibraryBottomContentPadding
 import com.lonx.lyrico.ui.components.library.libraryOverlayInsets
 import com.lonx.lyrico.ui.components.library.libraryScrollbarOverlay
-import com.lonx.lyrico.ui.components.library.rememberBlurBackdrop
-import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
 import com.lonx.lyrico.ui.components.scaffoldTopHorizontalPadding
 import com.lonx.lyrico.ui.components.song.LibraryScanProgressText
@@ -74,6 +73,7 @@ import my.nanihadesuka.compose.ScrollbarSelectionMode
 import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.viewmodel.koinActivityViewModel
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -83,14 +83,12 @@ import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Search
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -178,7 +176,7 @@ fun SongsPage(
     val enableIndex = sections.isNotEmpty() && sortInfo.sortBy.supportsIndex
 
     val topAppBarScrollBehavior = MiuixScrollBehavior()
-    val topBarBackdrop = rememberBlurBackdrop(LocalLibraryBarBlurEnabled.current)
+    val topBarBackdrop = rememberBarBlurBackdrop()
     val refreshTexts = listOf(
         stringResource(R.string.pull_to_refresh),
         stringResource(R.string.release_to_refresh),
@@ -188,138 +186,135 @@ fun SongsPage(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            LibraryBlurredBar(
-                backdrop = topBarBackdrop,
-                modifier = Modifier.scaffoldTopAppBarInsetsPadding(),
-            ) {
-            val topBarState = when {
-                isSelectionMode -> TopBarState.Selection
-                else -> TopBarState.Default
-            }
+            BlurredTopBar(backdrop = topBarBackdrop) {
+                val topBarState = when {
+                    isSelectionMode -> TopBarState.Selection
+                    else -> TopBarState.Default
+                }
 
-            AnimatedContent(
-                targetState = topBarState,
-                label = "TopBarAnimation",
-                transitionSpec = {
-                    // 定义过渡动画：淡入淡出 + 轻微的垂直滑动 + 尺寸自适应平滑过渡
-                    val animationDuration = 300
-                    val enter = fadeIn(tween(animationDuration)) +
-                            slideInVertically(
-                                animationSpec = tween(
-                                    animationDuration,
-                                    easing = FastOutSlowInEasing
-                                ),
-                                initialOffsetY = { -it / 3 } // 从上方 1/3 处滑入
-                            )
-                    val exit = fadeOut(tween(animationDuration)) +
-                            slideOutVertically(
-                                animationSpec = tween(
-                                    animationDuration,
-                                    easing = FastOutSlowInEasing
-                                ),
-                                targetOffsetY = { -it / 3 } // 向上方 1/3 处滑出
-                            )
+                AnimatedContent(
+                    targetState = topBarState,
+                    label = "TopBarAnimation",
+                    transitionSpec = {
+                        // 定义过渡动画：淡入淡出 + 轻微的垂直滑动 + 尺寸自适应平滑过渡
+                        val animationDuration = 300
+                        val enter = fadeIn(tween(animationDuration)) +
+                                slideInVertically(
+                                    animationSpec = tween(
+                                        animationDuration,
+                                        easing = FastOutSlowInEasing
+                                    ),
+                                    initialOffsetY = { -it / 3 } // 从上方 1/3 处滑入
+                                )
+                        val exit = fadeOut(tween(animationDuration)) +
+                                slideOutVertically(
+                                    animationSpec = tween(
+                                        animationDuration,
+                                        easing = FastOutSlowInEasing
+                                    ),
+                                    targetOffsetY = { -it / 3 } // 向上方 1/3 处滑出
+                                )
 
-                    (enter togetherWith exit).using(
-                        // SizeTransform 保证了如果搜索栏和默认导航栏高度不同时，高度变化也是平滑的
-                        SizeTransform(clip = false)
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { state ->
-                when (state) {
-                    TopBarState.Selection -> {
-                        SongSelectionTopAppBar(
-                            songs = songs,
-                            selectedSongUris = selectedSongUris,
-                            scrollBehavior = topAppBarScrollBehavior,
-                            color = if (topBarBackdrop != null) Color.Transparent else Color.Unspecified,
-                            applyInsets = false,
-                            onSelectAll = selectionViewModel::selectAll,
-                            onDeselectAll = selectionViewModel::deselectAll,
-                            onClose = selectionViewModel::exitSelectionMode
+                        (enter togetherWith exit).using(
+                            // SizeTransform 保证了如果搜索栏和默认导航栏高度不同时，高度变化也是平滑的
+                            SizeTransform(clip = false)
                         )
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { state ->
+                    when (state) {
+                        TopBarState.Selection -> {
+                            SongSelectionTopAppBar(
+                                songs = songs,
+                                selectedSongUris = selectedSongUris,
+                                scrollBehavior = topAppBarScrollBehavior,
+                                color = Color.Transparent,
+                                applyInsets = false,
+                                onSelectAll = selectionViewModel::selectAll,
+                                onDeselectAll = selectionViewModel::deselectAll,
+                                onClose = selectionViewModel::exitSelectionMode
+                            )
+                        }
 
-                    TopBarState.Default -> {
-                        SmallTopAppBar(
-                            title = stringResource(R.string.song_list_title, songs.size),
-                            color = if (topBarBackdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface,
-                            modifier = Modifier,
-                            scrollBehavior = topAppBarScrollBehavior,
-                            defaultWindowInsetsPadding = false,
-                            navigationIcon = {
-                                IconButton(
-                                    onClick = { navigator.navigate(SettingsDestination()) }
-                                ) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Settings,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            actions = {
-                                IconButton(onClick = {
-                                    navigator.navigate(LocalSearchDestination)
-                                }) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Search,
-                                        contentDescription = stringResource(R.string.cd_search)
-                                    )
-                                }
-                                val sortTypes = SortBy.entries.toList()
-                                val sortEntries = DropdownEntry(
-                                    items = sortTypes.mapIndexed { _, sortBy ->
-                                        val isSelected = sortInfo.sortBy == sortBy
-                                        DropdownItem(
-                                            text = stringResource(sortBy.labelRes),
-                                            selected = isSelected,
-                                            summary = if (isSelected) {
-                                                stringResource(
-                                                    when (sortInfo.order) {
-                                                        SortOrder.ASC -> R.string.sort_ascending
-                                                        SortOrder.DESC -> R.string.sort_descending
-                                                    }
-                                                )
-                                            } else {
-                                                null
-                                            },
-                                            onClick = {
-                                                val newOrder = if (isSelected) {
-                                                    if (sortInfo.order == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
-                                                } else {
-                                                    SortOrder.ASC
-                                                }
-                                                viewModel.onSortChange(
-                                                    SortInfo(
-                                                        sortBy,
-                                                        newOrder
-                                                    )
-                                                )
-                                            }
+                        TopBarState.Default -> {
+                            SmallTopAppBar(
+                                title = stringResource(R.string.song_list_title, songs.size),
+                                color = Color.Transparent,
+                                modifier = Modifier,
+                                scrollBehavior = topAppBarScrollBehavior,
+                                defaultWindowInsetsPadding = false,
+                                navigationIcon = {
+                                    IconButton(
+                                        onClick = { navigator.navigate(SettingsDestination()) }
+                                    ) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Settings,
+                                            contentDescription = null
                                         )
                                     }
-                                )
-                                OverlayIconDropdownMenu(
-                                    entries = listOf(sortEntries),
-                                ) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Sort,
-                                        contentDescription = stringResource(R.string.cd_sort)
+                                },
+                                actions = {
+                                    IconButton(onClick = {
+                                        navigator.navigate(LocalSearchDestination)
+                                    }) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Search,
+                                            contentDescription = stringResource(R.string.cd_search)
+                                        )
+                                    }
+                                    val sortTypes = SortBy.entries.toList()
+                                    val sortEntries = DropdownEntry(
+                                        items = sortTypes.mapIndexed { _, sortBy ->
+                                            val isSelected = sortInfo.sortBy == sortBy
+                                            DropdownItem(
+                                                text = stringResource(sortBy.labelRes),
+                                                selected = isSelected,
+                                                summary = if (isSelected) {
+                                                    stringResource(
+                                                        when (sortInfo.order) {
+                                                            SortOrder.ASC -> R.string.sort_ascending
+                                                            SortOrder.DESC -> R.string.sort_descending
+                                                        }
+                                                    )
+                                                } else {
+                                                    null
+                                                },
+                                                onClick = {
+                                                    val newOrder = if (isSelected) {
+                                                        if (sortInfo.order == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
+                                                    } else {
+                                                        SortOrder.ASC
+                                                    }
+                                                    viewModel.onSortChange(
+                                                        SortInfo(
+                                                            sortBy,
+                                                            newOrder
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
                                     )
+                                    OverlayIconDropdownMenu(
+                                        entries = listOf(sortEntries),
+                                    ) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Sort,
+                                            contentDescription = stringResource(R.string.cd_sort)
+                                        )
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
-            }
             }
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (topBarBackdrop != null) Modifier.layerBackdrop(topBarBackdrop) else Modifier)
+                .blurSource(topBarBackdrop)
         ) {
             if (songs.isEmpty()) {
                 val scanProgress = scanState.progress
