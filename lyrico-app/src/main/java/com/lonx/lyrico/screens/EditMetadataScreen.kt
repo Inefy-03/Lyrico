@@ -97,6 +97,7 @@ import com.lonx.lyrico.data.model.plugin.PluginSourceType
 import com.lonx.lyrico.data.model.search.LyricsSearchResult
 import com.lonx.lyrico.plugin.source.SearchSourceProvider
 import com.lonx.lyrico.ui.components.CoverRequest
+import com.lonx.lyrico.ui.components.PagerDotsIndicator
 import com.lonx.lyrico.ui.components.base.LyricsOffsetField
 import com.lonx.lyrico.ui.components.blur.BlurredTopBar
 import com.lonx.lyrico.ui.components.blur.blurSource
@@ -1770,6 +1771,7 @@ private fun CoverSection(
         }
     }
     val pagerState = rememberPagerState(pageCount = { picturePages.size })
+    val pagerScope = rememberCoroutineScope()
     val currentPage = pagerState.currentPage.coerceIn(0, picturePages.lastIndex)
     val currentImageSource = picturePages[currentPage].source
     var imageSize by remember(currentImageSource) { mutableStateOf<Pair<Int, Int>?>(null) }
@@ -1878,117 +1880,130 @@ private fun CoverSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MiuixTheme.colorScheme.onSurfaceContainerVariant)
-                    ) { page ->
-                        val item = picturePages[page]
-                        Box(
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        HorizontalPager(
+                            state = pagerState,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { item.onClick() }
-                        ) {
-                            AsyncImage(
-                                model = item.source,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize(),
-                                placeholder = rememberTintedPainter(
-                                    painter = painterResource(id = R.drawable.ic_album_24dp),
-                                    tint = LyricoColors.coverPlaceholderIcon
-                                ),
-                                error = rememberTintedPainter(
-                                    painter = painterResource(id = R.drawable.ic_album_24dp),
-                                    tint = LyricoColors.coverPlaceholderIcon
-                                )
-                            )
-
+                                .size(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MiuixTheme.colorScheme.onSurfaceContainerVariant)
+                        ) { page ->
+                            val item = picturePages[page]
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(8.dp)
-                                    .background(
-                                        color = Color.Black.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .fillMaxSize()
+                                    .clickable { item.onClick() }
                             ) {
-                                Text(
-                                    text = item.label,
-                                    color = Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
+                                AsyncImage(
+                                    model = item.source,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.matchParentSize(),
+                                    placeholder = rememberTintedPainter(
+                                        painter = painterResource(id = R.drawable.ic_album_24dp),
+                                        tint = LyricoColors.coverPlaceholderIcon
+                                    ),
+                                    error = rememberTintedPainter(
+                                        painter = painterResource(id = R.drawable.ic_album_24dp),
+                                        tint = LyricoColors.coverPlaceholderIcon
+                                    )
                                 )
-                            }
 
-                            if (page == currentPage) {
-                                imageSize?.let {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(8.dp)
+                                        .background(
+                                            color = Color.Black.copy(alpha = 0.6f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = item.label,
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                if (page == currentPage) {
+                                    imageSize?.let {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(8.dp)
+                                                .background(
+                                                    color = Color.Black.copy(alpha = 0.6f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                )
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "${it.first}×${it.second}",
+                                                color = Color.White,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(8.dp)
+                                        .background(
+                                            color = Color.Black.copy(alpha = 0.6f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = item.editLabel,
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = item.isModified,
+                                    enter = scaleIn() + fadeIn(),
+                                    exit = scaleOut() + fadeOut(),
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                ) {
                                     Box(
                                         modifier = Modifier
-                                            .align(Alignment.BottomStart)
-                                            .padding(8.dp)
+                                            .clip(CircleShape)
                                             .background(
-                                                color = Color.Black.copy(alpha = 0.6f),
-                                                shape = RoundedCornerShape(4.dp)
+                                                LyricoColors.modifiedBadgeBackground.copy(alpha = 0.95f)
                                             )
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .clickable { item.onRevertClick() }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = "${it.first}×${it.second}",
-                                            color = Color.White,
-                                            fontSize = 9.sp,
+                                            text = stringResource(R.string.action_undo_changes),
+                                            fontSize = 10.sp,
+                                            color = LyricoColors.modifiedText,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
                             }
-
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(8.dp)
-                                    .background(
-                                        color = Color.Black.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = item.editLabel,
-                                    color = Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = item.isModified,
-                                enter = scaleIn() + fadeIn(),
-                                exit = scaleOut() + fadeOut(),
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(
-                                            LyricoColors.modifiedBadgeBackground.copy(alpha = 0.95f)
-                                        )
-                                        .clickable { item.onRevertClick() }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.action_undo_changes),
-                                        fontSize = 10.sp,
-                                        color = LyricoColors.modifiedText,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                        }
+                        if (picturePages.size > 1) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            PagerDotsIndicator(
+                                pageCount = picturePages.size,
+                                currentPage = currentPage,
+                                pageDescriptions = picturePages.map { it.label },
+                                onPageClick = { target ->
+                                    pagerScope.launch { pagerState.animateScrollToPage(target) }
                                 }
-                            }
+                            )
                         }
                     }
 
