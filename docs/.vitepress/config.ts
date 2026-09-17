@@ -30,6 +30,7 @@ const enSearch = {
 
 const socialLinks = [
   { icon: 'github' as const, link: 'https://github.com/Replica0110/Lyrico' },
+  { icon: 'telegram' as const, link: 'https://t.me/lyrico_app' }
 ]
 
 const zhSidebar = {
