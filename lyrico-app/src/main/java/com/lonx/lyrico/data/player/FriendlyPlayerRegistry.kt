@@ -14,16 +14,16 @@ object FriendlyPlayerRegistry {
             websiteUrl = "https://coneplayer.trantor.ink/#/"
         ),
         FriendlyPlayer(
-            id = "ella_music",
+            id = "halcyon",
             displayNameRes = R.string.friendly_player_halcyon,
             packageNames = listOf("com.ella.music"),
-            websiteUrl = "https://github.com/Kifranei/Ella"
+            websiteUrl = "https://github.com/Kifranei/Halcyon"
         ),
         FriendlyPlayer(
             id = "salt_player",
             displayNameRes = R.string.friendly_player_salt_player,
             packageNames = listOf("com.salt.music"),
-            websiteUrl = "https://moriafly.com/program/salt-player.html"
+            websiteUrl = "https://github.com/Moriafly/SaltPlayerSource"
         )
     )
 }
