@@ -445,6 +445,9 @@
     <string name="label_artist_image">演出者海報</string>
     <string name="label_change_artist_image">從本地選擇演出者海報</string>
     <string name="label_remove_artist_image">移除演出者海報</string>
+    <string name="label_save_artist_image">儲存演出者海報</string>
+    <string name="label_crop_artist_image">裁切演出者海報</string>
+    <string name="msg_read_artist_image_failed">讀取演出者海報失敗</string>
     <string name="edit_artist_image">編輯演出者海報</string>
     <string name="chinese_conversion_mode_none">不轉換</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">繁體轉簡體</string>
@@ -526,6 +529,8 @@
     <string name="label_crop_cover">裁切封面</string>
     <string name="label_select_same_album_cover">從同專輯選擇封面</string>
     <string name="msg_read_cover_failed">讀取封面失敗</string>
+    <string name="msg_picture_saved">%1$s已儲存</string>
+    <string name="msg_picture_save_failed">%1$s儲存失敗</string>
     <string name="label_image_ratio">圖片比例</string>
     <string name="option_free_ratio">自由比例</string>
     <string name="edit_cover">編輯封面</string>

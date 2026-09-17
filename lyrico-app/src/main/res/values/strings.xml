@@ -457,6 +457,9 @@
     <string name="label_artist_image">Artist Poster</string>
     <string name="label_change_artist_image">Choose Artist Poster from This Device</string>
     <string name="label_remove_artist_image">Remove Artist Poster</string>
+    <string name="label_save_artist_image">Save Artist Poster</string>
+    <string name="label_crop_artist_image">Crop artist poster</string>
+    <string name="msg_read_artist_image_failed">Failed to read artist poster</string>
     <string name="edit_artist_image">Edit Artist Poster</string>
     <string name="chinese_conversion_mode_none">None</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">CHT -> CHS</string>
@@ -524,6 +527,8 @@
     <string name="label_crop_cover">Crop cover</string>
     <string name="label_select_same_album_cover">Choose Cover from Same Album</string>
     <string name="msg_read_cover_failed">Failed to read cover</string>
+    <string name="msg_picture_saved">%1$s saved</string>
+    <string name="msg_picture_save_failed">Failed to save %1$s</string>
     <string name="label_image_ratio">Image ratio</string>
     <string name="option_free_ratio">Free ratio</string>
     <string name="edit_cover">Edit Cover</string>

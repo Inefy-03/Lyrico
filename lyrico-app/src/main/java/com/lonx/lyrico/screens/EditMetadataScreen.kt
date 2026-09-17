@@ -237,6 +237,7 @@ fun EditMetadataScreen(
     var showLyricsFormatBottomSheet by remember { mutableStateOf(false) }
     var showPlayerPicker by remember { mutableStateOf(false) }
     var bitmapToCrop by remember { mutableStateOf<Bitmap?>(null) }
+    var cropTarget by remember { mutableStateOf(AudioPictureType.FrontCover) }
     var isFabMenuExpanded by remember { mutableStateOf(false) }
     var photoPickerTarget by remember { mutableStateOf(AudioPictureType.FrontCover) }
     val currentShiftOffset by viewModel.currentShiftOffset.collectAsState()
@@ -361,6 +362,28 @@ fun EditMetadataScreen(
                 if (success) R.string.msg_export_lyrics_success else R.string.msg_export_lyrics_failed
             scope.launch { snackbarHostState.showSnackbar(context.getString(msg)) }
             viewModel.clearExportLyricsStatus()
+        }
+    }
+
+    LaunchedEffect(uiState.exportCoverResult) {
+        uiState.exportCoverResult?.let { success ->
+            val message = context.getString(
+                if (success) R.string.msg_picture_saved else R.string.msg_picture_save_failed,
+                context.getString(R.string.label_cover)
+            )
+            scope.launch { snackbarHostState.showSnackbar(message) }
+            viewModel.clearExportCoverStatus()
+        }
+    }
+
+    LaunchedEffect(uiState.exportArtistImageResult) {
+        uiState.exportArtistImageResult?.let { success ->
+            val message = context.getString(
+                if (success) R.string.msg_picture_saved else R.string.msg_picture_save_failed,
+                context.getString(R.string.label_artist_image)
+            )
+            scope.launch { snackbarHostState.showSnackbar(message) }
+            viewModel.clearExportArtistImageStatus()
         }
     }
 
@@ -1299,6 +1322,7 @@ fun EditMetadataScreen(
                                     val bitmap = getBitmap(context, sourceData)
                                     withContext(Dispatchers.Main) {
                                         if (bitmap != null) {
+                                            cropTarget = AudioPictureType.FrontCover
                                             bitmapToCrop = bitmap
                                             showCropSheet = true
                                         } else {
@@ -1346,17 +1370,38 @@ fun EditMetadataScreen(
                     ArrowPreference(
                         title = stringResource(R.string.label_remove_artist_image),
                         onClick = {
-                            val previousArtistImageUri = uiState.artistImageUri
-                            val previousArtistPicture = uiState.artistPicture
-                            val previousPictures = editingTagData?.pictures.orEmpty()
                             showArtistImageOptionsSheet = false
                             viewModel.removeArtistImage()
-                            showCancelUndoSnackbar(context.getString(R.string.label_artist_image)) {
-                                viewModel.restoreArtistImageSnapshot(
-                                    artistImageUri = previousArtistImageUri,
-                                    artistPicture = previousArtistPicture,
-                                    pictures = previousPictures
-                                )
+                        }
+                    )
+                    ArrowPreference(
+                        title = stringResource(R.string.label_save_artist_image),
+                        onClick = {
+                            showArtistImageOptionsSheet = false
+                            viewModel.exportArtistImage(context)
+                        }
+                    )
+                    ArrowPreference(
+                        title = stringResource(R.string.label_crop_artist_image),
+                        onClick = {
+                            showArtistImageOptionsSheet = false
+                            val sourceData = uiState.artistImageUri ?: uiState.originalArtistImage
+
+                            if (sourceData != null) {
+                                scope.launch(Dispatchers.IO) {
+                                    val bitmap = getBitmap(context, sourceData)
+                                    withContext(Dispatchers.Main) {
+                                        if (bitmap != null) {
+                                            cropTarget = AudioPictureType.Artist
+                                            bitmapToCrop = bitmap
+                                            showCropSheet = true
+                                        } else {
+                                            snackbarHostState.showSnackbar(
+                                                context.getString(R.string.msg_read_artist_image_failed)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     )
@@ -1370,13 +1415,19 @@ fun EditMetadataScreen(
     WindowBottomSheet(
         show = showCropSheet,
         enableNestedScroll = false,
-        title = stringResource(R.string.label_crop_cover),
+        title = stringResource(
+            if (cropTarget == AudioPictureType.Artist) R.string.label_crop_artist_image
+            else R.string.label_crop_cover
+        ),
         endAction = {
             if (cropperState != null) {
                 IconButton(
                     onClick = {
                         val croppedBitmap = cropperState.crop()
-                        viewModel.updateCover(croppedBitmap)
+                        when (cropTarget) {
+                            AudioPictureType.Artist -> viewModel.updateArtistImage(croppedBitmap)
+                            else -> viewModel.updateCover(croppedBitmap)
+                        }
                         showCropSheet = false
                         // 注意：这里不清空 bitmapToCrop，等动画结束再清
                     }

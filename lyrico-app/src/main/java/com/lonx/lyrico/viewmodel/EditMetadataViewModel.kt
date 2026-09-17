@@ -92,6 +92,7 @@ data class EditMetadataUiState(
      */
     val coverUri: Any? = null,
     val exportCoverResult: Boolean? = null,
+    val exportArtistImageResult: Boolean? = null,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean? = null,
     val originalCover: Any? = null,
@@ -484,6 +485,23 @@ class EditMetadataViewModel(
     }
 
     fun updateCover(bitmap: Bitmap) {
+        updatePictureFromBitmap(
+            bitmap = bitmap,
+            type = AudioPictureType.FrontCover
+        )
+    }
+
+    fun updateArtistImage(bitmap: Bitmap) {
+        updatePictureFromBitmap(
+            bitmap = bitmap,
+            type = AudioPictureType.Artist
+        )
+    }
+
+    private fun updatePictureFromBitmap(
+        bitmap: Bitmap,
+        type: AudioPictureType
+    ) {
         val byteArray = java.io.ByteArrayOutputStream().use { stream ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
             stream.toByteArray()
@@ -493,12 +511,12 @@ class EditMetadataViewModel(
             data = byteArray,
             mimeType = "image/jpeg",
             description = "",
-            pictureType = AudioPictureType.FrontCover.tagLibName
+            pictureType = type.tagLibName
         )
 
         _uiState.update { state ->
             state.withUpdatedPicture(
-                type = AudioPictureType.FrontCover,
+                type = type,
                 displaySource = byteArray,
                 audioPicture = audioPicture
             )
@@ -582,41 +600,78 @@ class EditMetadataViewModel(
      * 导出当前封面到本地相册
      */
     fun exportCover(context: Context) {
+        val state = _uiState.value
+        exportPictureToGallery(
+            context = context,
+            source = state.coverUri ?: state.originalCover ?: state.picture?.data,
+            albumName = "Covers",
+            filenamePrefix = "Cover",
+            failureLogMessage = "Failed to export cover",
+            onResult = { success -> _uiState.update { it.copy(exportCoverResult = success) } }
+        )
+    }
+
+    /**
+     * 导出当前艺术家海报到本地相册
+     */
+    fun exportArtistImage(context: Context) {
+        val state = _uiState.value
+        exportPictureToGallery(
+            context = context,
+            source = state.artistImageUri ?: state.originalArtistImage ?: state.artistPicture?.data,
+            albumName = "ArtistPosters",
+            filenamePrefix = "Artist",
+            failureLogMessage = "Failed to export artist poster",
+            onResult = { success -> _uiState.update { it.copy(exportArtistImageResult = success) } }
+        )
+    }
+
+    /**
+     * 把内嵌/已选/原始图片写入系统相册，结果通过 [onResult] 回传
+     */
+    private fun exportPictureToGallery(
+        context: Context,
+        source: Any?,
+        albumName: String,
+        filenamePrefix: String,
+        failureLogMessage: String,
+        onResult: (Boolean) -> Unit
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val state = _uiState.value
-                val coverSource = state.coverUri ?: state.originalCover ?: state.picture?.data
-
-                if (coverSource == null) {
+                if (source == null) {
                     recordMetadataFailure(
-                        message = "Failed to export cover: no cover source",
+                        message = "$failureLogMessage: no picture source",
                         relatedId = currentSongUri,
-                        detail = "No embedded cover, selected cover, or original cover is available."
+                        detail = "No embedded picture, selected picture, or original picture is available."
                     )
-                    _uiState.update { it.copy(exportCoverResult = false) }
+                    onResult(false)
                     return@launch
                 }
 
-                val filename = "Cover_${System.currentTimeMillis()}.jpg"
+                val filename = "${filenamePrefix}_${System.currentTimeMillis()}.jpg"
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
                     put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Covers")
+                    put(
+                        MediaStore.MediaColumns.RELATIVE_PATH,
+                        Environment.DIRECTORY_PICTURES + "/" + albumName
+                    )
                 }
 
                 val resolver = context.contentResolver
                 val destUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
 
                 if (destUri != null) {
-                    val wroteCover = resolver.openOutputStream(destUri)?.use { outputStream ->
-                        when (getCoverSourceType(coverSource)) {
+                    val wrotePicture = resolver.openOutputStream(destUri)?.use { outputStream ->
+                        when (getCoverSourceType(source)) {
                             CoverSourceType.BYTE_ARRAY -> {
-                                outputStream.write(coverSource as ByteArray)
+                                outputStream.write(source as ByteArray)
                                 true
                             }
 
                             CoverSourceType.NETWORK_URL -> {
-                                java.net.URL(coverSource.toString().trim()).openStream().use { inputStream ->
+                                java.net.URL(source.toString().trim()).openStream().use { inputStream ->
                                     inputStream.copyTo(outputStream)
                                 }
                                 true
@@ -624,9 +679,9 @@ class EditMetadataViewModel(
 
                             CoverSourceType.CONTENT_OR_FILE_URI,
                             CoverSourceType.URI -> {
-                                val sourceUri = when (coverSource) {
-                                    is Uri -> coverSource
-                                    is String -> coverSource.trim().toUri()
+                                val sourceUri = when (source) {
+                                    is Uri -> source
+                                    is String -> source.trim().toUri()
                                     else -> null
                                 }
                                 sourceUri?.let {
@@ -638,7 +693,7 @@ class EditMetadataViewModel(
                             }
 
                             CoverSourceType.FILE_PATH -> {
-                                java.io.FileInputStream(coverSource.toString().trim()).use { inputStream ->
+                                java.io.FileInputStream(source.toString().trim()).use { inputStream ->
                                     inputStream.copyTo(outputStream)
                                 }
                                 true
@@ -649,38 +704,42 @@ class EditMetadataViewModel(
                         }
                     } ?: false
 
-                    if (wroteCover) {
-                        _uiState.update { it.copy(exportCoverResult = true) }
+                    if (wrotePicture) {
+                        onResult(true)
                     } else {
                         recordMetadataFailure(
-                            message = "Failed to export cover: source stream unavailable",
+                            message = "$failureLogMessage: source stream unavailable",
                             relatedId = currentSongUri,
-                            detail = "Source: $coverSource"
+                            detail = "Source: $source"
                         )
-                        _uiState.update { it.copy(exportCoverResult = false) }
+                        onResult(false)
                     }
                 } else {
                     recordMetadataFailure(
-                        message = "Failed to export cover: MediaStore insert returned null",
+                        message = "$failureLogMessage: MediaStore insert returned null",
                         relatedId = currentSongUri,
                         detail = "Destination image URI could not be created."
                     )
-                    _uiState.update { it.copy(exportCoverResult = false) }
+                    onResult(false)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "导出封面失败", e)
+                Log.e(TAG, "导出图片失败: $filenamePrefix", e)
                 recordMetadataException(
-                    message = "Failed to export cover",
+                    message = failureLogMessage,
                     relatedId = currentSongUri,
                     throwable = e
                 )
-                _uiState.update { it.copy(exportCoverResult = false) }
+                onResult(false)
             }
         }
     }
 
     fun clearExportCoverStatus() {
         _uiState.update { it.copy(exportCoverResult = null) }
+    }
+
+    fun clearExportArtistImageStatus() {
+        _uiState.update { it.copy(exportArtistImageResult = null) }
     }
     fun revertCover() {
         _uiState.update { state ->
