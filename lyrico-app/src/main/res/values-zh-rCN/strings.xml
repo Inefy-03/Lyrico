@@ -79,8 +79,10 @@
     <string name="search_source_tab_style_text_only">仅文本</string>
     <string name="search_source_tab_style_icon_and_text">图标和文本</string>
     <string name="search_result_track_of_disc">第 %2$s 碟 · 第 %1$s 轨</string>
+    <string name="batch_match_overwrite_mode">覆盖模式</string>
+    <string name="batch_match_overwrite_mode_summary">开启后覆盖已有内容，关闭时只补充缺失的部分</string>
     <string name="batch_match_prefer_filename">优先使用文件名匹配</string>
-    <string name="batch_match_prefer_filename_summary">匹配时忽略内置标签，优先按文件名搜索；建议同时把标题和艺术家设为覆盖模式</string>
+    <string name="batch_match_prefer_filename_summary">匹配时忽略内置标签，优先按文件名搜索</string>
     <!-- 歌词 -->
     <string name="lyric_mode">歌词模式</string>
     <string name="lyric_line_order">歌词内容顺序</string>

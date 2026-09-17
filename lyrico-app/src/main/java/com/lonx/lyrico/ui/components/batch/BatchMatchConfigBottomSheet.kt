@@ -54,7 +54,23 @@ fun BatchMatchConfigBottomSheet(
     onDismissRequest: (BatchMatchConfig) -> Unit,
     onConfirm: (BatchMatchConfig) -> Unit
 ) {
-    var config by remember(show, initialConfig) { mutableStateOf(initialConfig) }
+    val singleTarget = matchType.targets.singleOrNull()
+
+    var config by remember(show, initialConfig, singleTarget) {
+        mutableStateOf(
+            if (singleTarget != null &&
+                (initialConfig.targetModes[singleTarget] ?: MetadataWriteMode.DISABLED) ==
+                MetadataWriteMode.DISABLED
+            ) {
+                initialConfig.copy(
+                    targetModes = initialConfig.targetModes +
+                        (singleTarget to MetadataWriteMode.SUPPLEMENT)
+                )
+            } else {
+                initialConfig
+            }
+        )
+    }
 
     val targets = visibleTargets.filter { it in matchType.targets }
 
@@ -89,43 +105,45 @@ fun BatchMatchConfigBottomSheet(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             ) {
-                Card(
-                    modifier = Modifier.padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.secondaryContainer,
-                    )
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.heightIn(max = 250.dp)
+                if (singleTarget == null) {
+                    Card(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        colors = CardDefaults.defaultColors(
+                            color = MiuixTheme.colorScheme.secondaryContainer,
+                        )
                     ) {
-                        items(targets, key = { it.name }) { target ->
-                            val mode = config.targetModes[target] ?: MetadataWriteMode.DISABLED
-                            val isSelected = mode != MetadataWriteMode.DISABLED
-                            val effectiveMode = if (isSelected) {
-                                mode
-                            } else {
-                                MetadataWriteMode.SUPPLEMENT
-                            }
-
-                            BatchMatchTargetItem(
-                                target = target,
-                                isSelected = isSelected,
-                                mode = effectiveMode,
-                                onCheckedChange = { checked ->
-                                    updateTarget(target, checked, effectiveMode)
-                                },
-                                onModeToggle = {
-                                    updateTarget(
-                                        target = target,
-                                        isSelected = isSelected,
-                                        mode = if (effectiveMode == MetadataWriteMode.OVERWRITE) {
-                                            MetadataWriteMode.SUPPLEMENT
-                                        } else {
-                                            MetadataWriteMode.OVERWRITE
-                                        }
-                                    )
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 250.dp)
+                        ) {
+                            items(targets, key = { it.name }) { target ->
+                                val mode = config.targetModes[target] ?: MetadataWriteMode.DISABLED
+                                val isSelected = mode != MetadataWriteMode.DISABLED
+                                val effectiveMode = if (isSelected) {
+                                    mode
+                                } else {
+                                    MetadataWriteMode.SUPPLEMENT
                                 }
-                            )
+
+                                BatchMatchTargetItem(
+                                    target = target,
+                                    isSelected = isSelected,
+                                    mode = effectiveMode,
+                                    onCheckedChange = { checked ->
+                                        updateTarget(target, checked, effectiveMode)
+                                    },
+                                    onModeToggle = {
+                                        updateTarget(
+                                            target = target,
+                                            isSelected = isSelected,
+                                            mode = if (effectiveMode == MetadataWriteMode.OVERWRITE) {
+                                                MetadataWriteMode.SUPPLEMENT
+                                            } else {
+                                                MetadataWriteMode.OVERWRITE
+                                            }
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -136,6 +154,27 @@ fun BatchMatchConfigBottomSheet(
                 ) {
                     val tempConcurrency = remember(config.concurrency) {
                         mutableIntStateOf(config.concurrency)
+                    }
+                    if (singleTarget != null) {
+                        // 单字段的匹配类型（如歌词 / 封面）打开即匹配，不需要勾选字段，
+                        // 这一项只负责切换「覆盖」还是「补充」
+                        CheckboxPreference(
+                            title = stringResource(R.string.batch_match_overwrite_mode),
+                            summary = stringResource(R.string.batch_match_overwrite_mode_summary),
+                            checked = config.targetModes[singleTarget] == MetadataWriteMode.OVERWRITE,
+                            onCheckedChange = { checked ->
+                                updateTarget(
+                                    target = singleTarget,
+                                    isSelected = true,
+                                    mode = if (checked) {
+                                        MetadataWriteMode.OVERWRITE
+                                    } else {
+                                        MetadataWriteMode.SUPPLEMENT
+                                    }
+                                )
+                            },
+                            insideMargin = PaddingValues(12.dp)
+                        )
                     }
                     CheckboxPreference(
                         title = stringResource(R.string.batch_match_prefer_filename),

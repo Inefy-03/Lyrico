@@ -79,8 +79,10 @@
     <string name="search_source_tab_style_text_only">僅文字</string>
     <string name="search_source_tab_style_icon_and_text">圖示和文字</string>
     <string name="search_result_track_of_disc">第 %2$s 碟 · 第 %1$s 軌</string>
+    <string name="batch_match_overwrite_mode">覆寫模式</string>
+    <string name="batch_match_overwrite_mode_summary">開啟後覆寫已有內容，關閉時只補充缺失的部分</string>
     <string name="batch_match_prefer_filename">優先使用檔名比對</string>
-    <string name="batch_match_prefer_filename_summary">比對時忽略內建標籤，優先依檔名搜尋；建議同時將標題和演出者設為覆寫模式</string>
+    <string name="batch_match_prefer_filename_summary">比對時忽略內建標籤，優先依檔名搜尋</string>
     <!-- 歌詞 -->
     <string name="lyric_mode">歌詞模式</string>
     <string name="lyric_line_order">歌詞內容順序</string>
