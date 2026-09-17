@@ -10,12 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -52,6 +49,7 @@ import coil3.compose.AsyncImage
 import com.lonx.lyrico.R
 import com.lonx.lyrico.ui.components.bar.SearchBar
 import com.lonx.lyrico.ui.components.rememberTintedPainter
+import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
 import com.lonx.lyrico.ui.components.scaffoldTopHorizontalPadding
 import com.lonx.lyrico.ui.theme.LyricoColors
 import com.lonx.lyrico.ui.theme.isDarkTheme
@@ -132,7 +130,7 @@ fun SearchCoverScreen(
         topBar = {
             Column(
                 modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .scaffoldTopAppBarInsetsPadding()
                     .padding(vertical = 8.dp)
             ) {
 
@@ -195,7 +193,7 @@ fun SearchCoverScreen(
             }
             SourcePillTabRow(
                 tabs = tabs,
-                selectedTabIndex = pagerState.currentPage,
+                selectedTabIndex = pagerState.targetPage,
                 tabStyle = uiState.searchSourceTabStyle,
                 onTabSelected = { index ->
                     scope.launch {

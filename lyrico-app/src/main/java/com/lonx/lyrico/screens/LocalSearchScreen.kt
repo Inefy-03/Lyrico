@@ -63,6 +63,7 @@ import com.lonx.lyrico.ui.components.bar.SearchBar
 import com.lonx.lyrico.ui.components.bar.SongBatchSelectionActions
 import com.lonx.lyrico.ui.components.bar.SongSelectionTopAppBar
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
+import com.lonx.lyrico.ui.components.scaffoldTopAppBarInsetsPadding
 import com.lonx.lyrico.ui.components.search.SearchSectionHeader
 import com.lonx.lyrico.ui.components.song.SongActionSheets
 import com.lonx.lyrico.ui.components.song.SongListItem
@@ -135,7 +136,7 @@ fun LocalSearchScreen(
     var showDetailSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    val currentTab = searchTabs.getOrElse(pagerState.currentPage) { LocalSearchTab.All }
+    val currentTab = searchTabs.getOrElse(pagerState.targetPage) { LocalSearchTab.All }
     val visibleSongs = visibleSongsForTab(
         tab = currentTab,
         uiState = uiState,
@@ -149,7 +150,7 @@ fun LocalSearchScreen(
             .collectLatest(viewModel::onQueryChange)
     }
 
-    LaunchedEffect(isSelectionMode, pagerState.currentPage) {
+    LaunchedEffect(isSelectionMode, currentTab) {
         if (isSelectionMode && visibleSongs.isEmpty()) {
             selectionViewModel.exitSelectionMode()
         }
@@ -167,7 +168,10 @@ fun LocalSearchScreen(
         Scaffold(
             topBar = {
                 Column(
-                    modifier = Modifier.background(MiuixTheme.colorScheme.surface)
+                    modifier = Modifier
+                        .background(MiuixTheme.colorScheme.surface)
+                        // 与其它页面（BlurredTopBar 等）一致：顶部区域自己处理安全区
+                        .scaffoldTopAppBarInsetsPadding()
                 ) {
                     AnimatedContent(
                         targetState = isSelectionMode,
@@ -259,7 +263,7 @@ fun LocalSearchScreen(
                             )
                             LocalSearchPillTabRow(
                                 tabs = searchTabs,
-                                selectedTabIndex = pagerState.currentPage,
+                                selectedTabIndex = pagerState.targetPage,
                                 onTabSelected = { index ->
                                     scope.launch {
                                         pagerState.animateScrollToPage(index)
