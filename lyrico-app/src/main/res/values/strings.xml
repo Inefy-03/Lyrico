@@ -278,6 +278,7 @@
     <string name="label_date_modified">Date Modified</string>
     <string name="label_file_path">File Path</string>
     <string name="label_cover">Cover</string>
+    <string name="label_artist">Artist</string>
     <string name="label_custom">Custom</string>
     <string name="label_extension">Extension</string>
     <!-- Screen Titles -->
@@ -450,13 +451,13 @@
     <string name="replacement_not_selected">Not selected</string>
 
 
-    <string name="label_change_cover">Change Cover</string>
+    <string name="label_change_cover">Choose Cover from This Device</string>
     <string name="label_remove_cover">Remove Cover</string>
     <string name="label_save_cover">Save Cover</string>
-    <string name="label_artist_image">Artist Image</string>
-    <string name="label_change_artist_image">Change Artist Image</string>
-    <string name="label_remove_artist_image">Remove Artist Image</string>
-    <string name="edit_artist_image">Tap to edit artist image</string>
+    <string name="label_artist_image">Artist Poster</string>
+    <string name="label_change_artist_image">Choose Artist Poster from This Device</string>
+    <string name="label_remove_artist_image">Remove Artist Poster</string>
+    <string name="edit_artist_image">Edit Artist Poster</string>
     <string name="chinese_conversion_mode_none">None</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">CHT -> CHS</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">CHS -> CHT</string>
@@ -484,7 +485,7 @@
     <string name="batch_edit_tab_preview">Preview (%1$d)</string>
     <string name="batch_edit_song_count">%d songs selected</string>
     <string name="batch_edit_result_summary">Success: %1$d / Total: %2$d, skipped: %3$d, failed: %4$d</string>
-    <string name="batch_edit_cover_change">Change Cover</string>
+    <string name="batch_edit_cover_change">Choose Cover from This Device</string>
     <string name="batch_edit_cover_remove">Remove Cover</string>
     <string name="batch_edit_cover_revert">Revert Cover</string>
     <string name="batch_edit_cover_hint">Tap to select a cover image</string>
@@ -519,7 +520,9 @@
     <string name="limit_lyrics_input_lines">Limit editor lines</string>
     <string name="limit_lyrics_input_lines_hint">Keep the lyrics editor at a fixed height so very long lyrics are easier to select and edit</string>
     <string name="label_cover_options">Cover options</string>
+    <string name="label_artist_image_options">Artist poster options</string>
     <string name="label_crop_cover">Crop cover</string>
+    <string name="label_select_same_album_cover">Choose Cover from Same Album</string>
     <string name="msg_read_cover_failed">Failed to read cover</string>
     <string name="label_image_ratio">Image ratio</string>
     <string name="option_free_ratio">Free ratio</string>

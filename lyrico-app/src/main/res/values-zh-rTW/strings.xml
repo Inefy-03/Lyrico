@@ -278,6 +278,7 @@
     <string name="label_date_modified">修改時間</string>
     <string name="label_file_path">檔案路徑</string>
     <string name="label_cover">封面</string>
+    <string name="label_artist">演出者</string>
     <string name="label_custom">自訂</string>
     <!-- 標題 -->
     <string name="label_extension">副檔名</string>
@@ -438,13 +439,13 @@
     <string name="replacement_not_selected">未選擇</string>
 
 
-    <string name="label_change_cover">更換封面</string>
+    <string name="label_change_cover">從本地選擇封面</string>
     <string name="label_remove_cover">移除封面</string>
     <string name="label_save_cover">儲存封面</string>
-    <string name="label_artist_image">演出者圖片</string>
-    <string name="label_change_artist_image">更換演出者圖片</string>
-    <string name="label_remove_artist_image">移除演出者圖片</string>
-    <string name="edit_artist_image">點擊編輯演出者圖片</string>
+    <string name="label_artist_image">演出者海報</string>
+    <string name="label_change_artist_image">從本地選擇演出者海報</string>
+    <string name="label_remove_artist_image">移除演出者海報</string>
+    <string name="edit_artist_image">編輯演出者海報</string>
     <string name="chinese_conversion_mode_none">不轉換</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">繁體轉簡體</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">簡體轉繁體</string>
@@ -486,7 +487,7 @@
     <string name="batch_edit_tab_preview">預覽（%1$d）</string>
     <string name="batch_edit_song_count">已選擇 %d 首歌曲</string>
     <string name="batch_edit_result_summary">成功：%1$d / 總數：%2$d，略過：%3$d，失敗：%4$d</string>
-    <string name="batch_edit_cover_change">更換封面</string>
+    <string name="batch_edit_cover_change">從本地選擇封面</string>
     <string name="batch_edit_cover_remove">移除封面</string>
     <string name="batch_edit_cover_revert">還原封面</string>
     <string name="batch_edit_cover_hint">點擊選擇封面圖片</string>
@@ -521,7 +522,9 @@
     <string name="limit_lyrics_input_lines">限制編輯框行數</string>
     <string name="limit_lyrics_input_lines_hint">將歌詞編輯框保持在固定高度，方便選擇和編輯長歌詞</string>
     <string name="label_cover_options">封面選項</string>
+    <string name="label_artist_image_options">演出者海報選項</string>
     <string name="label_crop_cover">裁切封面</string>
+    <string name="label_select_same_album_cover">從同專輯選擇封面</string>
     <string name="msg_read_cover_failed">讀取封面失敗</string>
     <string name="label_image_ratio">圖片比例</string>
     <string name="option_free_ratio">自由比例</string>

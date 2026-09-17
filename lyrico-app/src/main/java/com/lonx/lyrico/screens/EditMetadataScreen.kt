@@ -206,7 +206,7 @@ fun EditMetadataScreen(
     val replayGainCalculateProgress = uiState.replayGainCalculateProgress
     val originalTagData = uiState.originalTagData
     val editingTagData = uiState.editingTagData
-    // 没有内嵌艺术家图片时，回退到外置的艺术家海报文件夹
+    // 没有内嵌艺术家海报时，回退到外置的艺术家海报文件夹
     val artistPosterSource = rememberArtistPosterSource()
     val artistPosterFallback = remember(songFileUri, editingTagData?.artist, artistPosterSource) {
         CoverRequest(
@@ -214,7 +214,7 @@ fun EditMetadataScreen(
             lastUpdate = 0L,
             pictureType = AudioPictureType.Artist,
             fallbackPictureTypes = listOf(AudioPictureType.LeadArtist, AudioPictureType.Band),
-            // 外置海报只是内嵌艺术家图片缺失时的兜底，不要退化成普通封面
+            // 外置海报只是内嵌艺术家海报缺失时的兜底，不要退化成普通封面
             fallbackToAny = false,
             artistName = editingTagData?.artist?.takeIf { it.isNotBlank() },
             artistPosterFolders = artistPosterSource.folders,
@@ -978,7 +978,7 @@ fun EditMetadataScreen(
                     }
                 )
                 FabMenuItem(
-                    label = stringResource(R.string.label_artist_image),
+                    label = stringResource(R.string.label_artist_image_options),
                     icon = MiuixIcons.Image,
                     onClick = {
                         isFabMenuExpanded = false
@@ -1267,7 +1267,7 @@ fun EditMetadataScreen(
                     }
                 )
                 ArrowPreference(
-                    title = "选择同专辑歌曲封面",
+                    title = stringResource(R.string.label_select_same_album_cover),
                     onClick = {
                         showCoverOptionsSheet = false
                         viewModel.loadSameAlbumCovers()
@@ -1318,7 +1318,7 @@ fun EditMetadataScreen(
     WindowBottomSheet(
         show = showArtistImageOptionsSheet,
         enableNestedScroll = false,
-        title = stringResource(R.string.label_artist_image),
+        title = stringResource(R.string.label_artist_image_options),
         onDismissRequest = { showArtistImageOptionsSheet = false }
     ) {
         Column(
@@ -1708,7 +1708,7 @@ private fun CoverSection(
         if (supportsTypedPictures) {
             add(
                 PicturePagerItem(
-                    label = stringResource(R.string.label_artist_image),
+                    label = stringResource(R.string.label_artist),
                     editLabel = stringResource(R.string.edit_artist_image),
                     source = artistImageUri,
                     isModified = isArtistImageModified,

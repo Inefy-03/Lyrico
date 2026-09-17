@@ -11,7 +11,7 @@
     <string name="artist_poster_folder_add">添加文件夹</string>
     <string name="artist_poster_folder_remove">移除文件夹</string>
     <string name="artist_poster_folder_error">操作失败，请重试</string>
-    <string name="artist_poster_folders_summary">内嵌艺术家图片不可用时，使用文件夹中的海报</string>
+    <string name="artist_poster_folders_summary">内嵌艺术家海报不可用时，使用文件夹中的海报</string>
     <string name="artist_poster_naming">命名规则</string>
     <string name="artist_poster_back">返回</string>
     <string name="artist_poster_no_files">没有找到海报</string>

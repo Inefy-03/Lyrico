@@ -551,7 +551,7 @@ fun BatchEditScreen(
                         }
                     )
                     ArrowPreference(
-                        title = "选择同专辑歌曲封面",
+                        title = stringResource(R.string.label_select_same_album_cover),
                         onClick = {
                             showCoverOptionsSheet = false
                             loadSameAlbumCovers()
