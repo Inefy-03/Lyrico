@@ -292,7 +292,7 @@ object MusicMatchUtils {
 
     /**
      * 从歌曲信息中提取本地关键词片段
-     * 支持 preferFileName 配置
+     * preferFileName 为 true 时只用去掉扩展名的原始文件名，既不清洗也不拆分
      */
     fun extractLocalSegments(
         song: SongEntity,
@@ -300,7 +300,11 @@ object MusicMatchUtils {
         queryTitle: String? = null,
         queryArtist: String? = null
     ): List<String> {
-        val fileSegments = parseFileNameSegments(song.fileName)
+        // 按文件名匹配：文件名怎么命名由用户自己负责，这里只去掉扩展名
+        if (preferFileName) {
+            val rawName = song.fileName.substringBeforeLast(".", song.fileName).trim()
+            return if (rawName.isEmpty()) emptyList() else listOf(rawName)
+        }
 
         val tagSegments = buildList {
             val title = queryTitle?.takeIf { it.isNotBlank() }
@@ -313,11 +317,7 @@ object MusicMatchUtils {
             if (!artist.isNullOrBlank()) addAll(splitToSegments(artist))
         }.filter { it.isNotBlank() }.distinct()
 
-        return if (preferFileName) {
-            fileSegments.ifEmpty { tagSegments }
-        } else {
-            tagSegments.ifEmpty { fileSegments }
-        }
+        return tagSegments.ifEmpty { parseFileNameSegments(song.fileName) }
     }
 
     // ==================== 8. 综合匹配分数 ====================
@@ -354,9 +354,6 @@ object MusicMatchUtils {
             preferFileName = preferFileName
         )
 
-        val title = song.title?.takeIf { it.isNotBlank() && !it.contains("未知", true) }
-        val artist = song.artist?.takeIf { it.isNotBlank() && !it.contains("未知", true) }
-
         return buildList {
             // 片段组合查询
             if (segments.isNotEmpty()) {
@@ -367,12 +364,17 @@ object MusicMatchUtils {
                 }
             }
 
-            // tag 补充查询（如果 preferFileName，tag 信息作为后备）
-            if (!title.isNullOrBlank() && !artist.isNullOrBlank()) {
-                add("${cleanNoise(title)} ${cleanNoise(artist)}")
-                add(cleanNoise(title))
-            } else if (!title.isNullOrBlank()) {
-                add(cleanNoise(title))
+            // tag 补充查询；指定按文件名匹配时不再追加，只认文件名
+            if (!preferFileName) {
+                val title = song.title?.takeIf { it.isNotBlank() && !it.contains("未知", true) }
+                val artist = song.artist?.takeIf { it.isNotBlank() && !it.contains("未知", true) }
+
+                if (!title.isNullOrBlank() && !artist.isNullOrBlank()) {
+                    add("${cleanNoise(title)} ${cleanNoise(artist)}")
+                    add(cleanNoise(title))
+                } else if (!title.isNullOrBlank()) {
+                    add(cleanNoise(title))
+                }
             }
         }
             .filter { it.isNotBlank() }
