@@ -14,7 +14,8 @@ class AudioCoverKeyer: Keyer<CoverRequest> {
             pictureType = data.pictureType,
             fallbackPictureTypes = data.fallbackPictureTypes,
             fallbackToAny = data.fallbackToAny,
-            candidates = data.candidates
+            candidates = data.candidates,
+            skipEmbeddedPictures = data.skipEmbeddedPictures
         ) + "@external:" + listOf(data.artistName, data.artistPosterFolders, data.artistPosterRevision).toString()
     }
 }

@@ -17,11 +17,13 @@ import com.lonx.audiotag.model.AudioPicture
 import com.lonx.audiotag.model.AudioPictureType
 import com.lonx.audiotag.model.AudioTagData
 import com.lonx.audiotag.model.CustomTagField
-import com.lonx.audiotag.model.artistPictureOrFallback
+import com.lonx.audiotag.model.addPicture
+import com.lonx.audiotag.model.artistPictureTypes
 import com.lonx.audiotag.model.frontCoverOrFallback
 import com.lonx.audiotag.model.pictureOfType
 import com.lonx.audiotag.model.removePictureType
 import com.lonx.audiotag.model.replacePicture
+import com.lonx.audiotag.model.type
 import com.lonx.lyrico.R
 import com.lonx.lyrico.data.editfield.CustomTagKey
 import com.lonx.lyrico.data.editfield.EditFieldConfigRepository
@@ -29,6 +31,7 @@ import com.lonx.lyrico.data.editfield.EditFieldDefinition
 import com.lonx.lyrico.data.editfield.EditFieldScene
 import com.lonx.lyrico.data.exception.RequiresUserPermissionException
 import com.lonx.lyrico.data.model.ConversionMode
+import com.lonx.lyrico.data.model.artist.ArtistSplitConfig
 import com.lonx.lyrico.data.model.entity.SongEntity
 import com.lonx.lyrico.data.model.log.AppLogLevel
 import com.lonx.lyrico.data.model.log.AppLogType
@@ -49,6 +52,9 @@ import com.lonx.lyrico.data.repository.PlaybackRepository
 import com.lonx.lyrico.data.repository.SettingsDefaults
 import com.lonx.lyrico.data.repository.SettingsRepository
 import com.lonx.lyrico.data.song.library.SongLibraryRepository
+import com.lonx.lyrico.data.utils.ArtistNameSplitter
+import com.lonx.lyrico.domain.poster.ArtistPosterEdits
+import com.lonx.lyrico.domain.poster.ArtistPosterGrouping
 import com.lonx.lyrico.domain.song.usecase.OverwriteSongTagsUseCase
 import com.lonx.lyrico.domain.song.usecase.ReadAudioTagsUseCase
 import com.lonx.lyrico.domain.song.usecase.SaveAudioTagsResult
@@ -97,9 +103,6 @@ data class EditMetadataUiState(
     val saveSuccess: Boolean? = null,
     val originalCover: Any? = null,
     val picture: AudioPicture? = null,
-    val artistImageUri: Any? = null,
-    val originalArtistImage: Any? = null,
-    val artistPicture: AudioPicture? = null,
     val permissionIntentSender: IntentSender? = null,
     val isReplayGainCalculating: Boolean = false,
     val replayGainScanMessage: UiMessage? = null,
@@ -146,6 +149,20 @@ class EditMetadataViewModel(
         SharingStarted.Eagerly,
         null
     )
+
+    /**
+     * 艺术家拆分配置。
+     *
+     * 艺术家海报用图片描述记录归属，需要先把艺术家字段拆成一个个艺术家才能判断
+     * 每张海报属于谁，所以这里的规则和艺术家视图保持一致。
+     */
+    val artistSplitConfig: StateFlow<ArtistSplitConfig> =
+        settingsRepository.artistSplitConfigFlow.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            ArtistSplitConfig()
+        )
+
     private var currentSong: SongEntity? = null
 
     // 存储当前正在操作的 URI 字符串
@@ -186,8 +203,6 @@ class EditMetadataViewModel(
                 val displayFileName = song?.fileName ?: audioTagData.fileName
                 val displayPicture = audioTagData.pictures.frontCoverOrFallback()
                 val displayCover = displayPicture?.data
-                val displayArtistPicture = audioTagData.pictures.artistPictureOrFallback()
-                val displayArtistImage = displayArtistPicture?.data
 
                 _uiState.update { state ->
                     state.copy(
@@ -204,18 +219,7 @@ class EditMetadataViewModel(
                         editingTagData = if (state.isEditing) state.editingTagData else audioTagData,
                         picture = displayPicture,
                         originalCover = if (state.isEditing) state.originalCover else displayCover,
-                        coverUri = if (state.isEditing) state.coverUri else displayCover,
-                        artistPicture = displayArtistPicture,
-                        originalArtistImage = if (state.isEditing) {
-                            state.originalArtistImage
-                        } else {
-                            displayArtistImage
-                        },
-                        artistImageUri = if (state.isEditing) {
-                            state.artistImageUri
-                        } else {
-                            displayArtistImage
-                        }
+                        coverUri = if (state.isEditing) state.coverUri else displayCover
                     )
                 }
             } catch (e: Exception) {
@@ -411,10 +415,26 @@ class EditMetadataViewModel(
     }
 
     fun updateCover(context: Context, uri: Uri) {
-        updatePictureFromUri(
+        readPictureBytes(
             context = context,
             uri = uri,
-            type = AudioPictureType.FrontCover
+            onResult = { bytes, mimeType ->
+                if (bytes == null) return@readPictureBytes
+
+                val audioPicture = AudioPicture(
+                    data = bytes,
+                    mimeType = mimeType,
+                    description = "",
+                    pictureType = AudioPictureType.FrontCover.tagLibName
+                )
+
+                _uiState.update { state ->
+                    state.withUpdatedFrontCover(
+                        displaySource = uri,
+                        audioPicture = audioPicture
+                    )
+                }
+            }
         )
     }
 
@@ -428,18 +448,129 @@ class EditMetadataViewModel(
         }
     }
 
-    fun updateArtistImage(context: Context, uri: Uri) {
-        updatePictureFromUri(
+    fun updateCover(bitmap: Bitmap) {
+        val byteArray = bitmap.toJpegBytes()
+        val audioPicture = AudioPicture(
+            data = byteArray,
+            mimeType = "image/jpeg",
+            description = "",
+            pictureType = AudioPictureType.FrontCover.tagLibName
+        )
+
+        _uiState.update { state ->
+            state.withUpdatedFrontCover(
+                displaySource = byteArray,
+                audioPicture = audioPicture
+            )
+        }
+    }
+
+    // ---------------------------------------------------------------- 艺术家海报
+
+    /**
+     * 新增/替换 [artistName] 的艺术家海报：该艺术家名下原有的海报会被替换掉。
+     *
+     * 一个艺术家只保留一张海报（ID3v2 规定同一个 content descriptor 只能挂一张图），
+     * 所以「从本地选择」既是新增也是替换；[artistName] 会写进图片描述作为归属。
+     */
+    fun setArtistImage(context: Context, uri: Uri, artistName: String) {
+        readPictureBytes(
             context = context,
             uri = uri,
-            type = AudioPictureType.Artist
+            onResult = { bytes, mimeType ->
+                if (bytes == null) return@readPictureBytes
+                val picture = newArtistPicture(bytes, mimeType, artistName)
+                updateArtistPictures { pictures, _ ->
+                    ArtistPosterEdits.setFor(
+                        pictures = pictures,
+                        artistNames = currentArtistNames(),
+                        artistName = artistName,
+                        picture = picture
+                    )
+                }
+            }
         )
     }
 
-    private fun updatePictureFromUri(
+    /** 移除某一张艺术家图片（标签里若残留多张，只删这一张）。 */
+    fun removeArtistImage(target: AudioPicture) {
+        updateArtistPictures { pictures, _ -> ArtistPosterEdits.remove(pictures, target) }
+    }
+
+    /** 裁剪结果：替换某一张艺术家图片的数据，保留它的归属描述。 */
+    fun replaceArtistImage(bitmap: Bitmap, target: AudioPicture) {
+        val bytes = bitmap.toJpegBytes()
+        updateArtistPictures { pictures, _ ->
+            ArtistPosterEdits.replaceData(pictures, target, bytes, "image/jpeg")
+        }
+    }
+
+    /**
+     * 把 [target] 这一组艺术家海报改挂到 [artistName]。
+     *
+     * 艺术家字段被编辑后，旧海报的描述会对不上任何艺术家，用户需要在这里重新指定；
+     * 该艺术家原有的海报会被替换掉。
+     */
+    fun reassignArtistImages(target: AudioPicture, artistName: String) {
+        updateArtistPictures { pictures, _ ->
+            ArtistPosterEdits.reassign(
+                pictures = pictures,
+                artistNames = currentArtistNames(),
+                target = target,
+                artistName = artistName
+            )
+        }
+    }
+
+    /** 导出某张艺术家海报到系统相册。 */
+    fun exportArtistImage(context: Context, target: AudioPicture) {
+        exportPictureToGallery(
+            context = context,
+            source = target.data,
+            albumName = "ArtistPosters",
+            filenamePrefix = "Artist",
+            failureLogMessage = "Failed to export artist poster",
+            onResult = { success -> _uiState.update { it.copy(exportArtistImageResult = success) } }
+        )
+    }
+
+    private fun newArtistPicture(
+        bytes: ByteArray,
+        mimeType: String,
+        artistName: String
+    ) = AudioPicture(
+        data = bytes,
+        mimeType = mimeType,
+        description = artistName.trim(),
+        pictureType = AudioPictureType.Artist.tagLibName
+    )
+
+    /** 当前编辑态的艺术家名（艺术家字段按配置拆分）。 */
+    private fun currentArtistNames(): List<String> =
+        _uiState.value.editingTagData?.let {
+            ArtistNameSplitter.splitArtists(it.artist, artistSplitConfig.value)
+        }.orEmpty()
+
+    /** 用 [transform] 生成新的图片列表；结果没变时不动状态。 */
+    private fun updateArtistPictures(
+        transform: (pictures: List<AudioPicture>, original: AudioTagData?) -> List<AudioPicture>
+    ) {
+        _uiState.update { state ->
+            val current = state.editingTagData ?: return@update state
+            val nextPictures = transform(current.pictures, state.originalTagData)
+            if (nextPictures == current.pictures) return@update state
+            state.copy(
+                isEditing = true,
+                editingTagData = current.copy(pictures = nextPictures)
+            )
+        }
+    }
+
+    /** 读取本地图片字节；失败时记录日志并以 `null` 回调。 */
+    private fun readPictureBytes(
         context: Context,
         uri: Uri,
-        type: AudioPictureType
+        onResult: (bytes: ByteArray?, mimeType: String) -> Unit
     ) {
         val appContext = context.applicationContext
         viewModelScope.launch(Dispatchers.IO) {
@@ -455,24 +586,13 @@ class EditMetadataViewModel(
                         relatedId = currentSongUri,
                         detail = "Source URI: $uri"
                     )
+                    onResult(null, "image/jpeg")
                     return@launch
                 }
 
-                val audioPicture = AudioPicture(
-                    data = bytes,
-                    mimeType = resolver.getType(uri)?.takeIf { it.startsWith("image/") }
-                        ?: "image/jpeg",
-                    description = "",
-                    pictureType = type.tagLibName
-                )
-
-                _uiState.update { state ->
-                    state.withUpdatedPicture(
-                        type = type,
-                        displaySource = uri,
-                        audioPicture = audioPicture
-                    )
-                }
+                val mimeType = resolver.getType(uri)?.takeIf { it.startsWith("image/") }
+                    ?: "image/jpeg"
+                onResult(bytes, mimeType)
             } catch (e: Exception) {
                 Log.e(TAG, "读取图片失败: $uri", e)
                 recordMetadataException(
@@ -480,82 +600,34 @@ class EditMetadataViewModel(
                     relatedId = currentSongUri,
                     throwable = e
                 )
+                onResult(null, "image/jpeg")
             }
         }
     }
 
-    fun updateCover(bitmap: Bitmap) {
-        updatePictureFromBitmap(
-            bitmap = bitmap,
-            type = AudioPictureType.FrontCover
-        )
-    }
-
-    fun updateArtistImage(bitmap: Bitmap) {
-        updatePictureFromBitmap(
-            bitmap = bitmap,
-            type = AudioPictureType.Artist
-        )
-    }
-
-    private fun updatePictureFromBitmap(
-        bitmap: Bitmap,
-        type: AudioPictureType
-    ) {
-        val byteArray = java.io.ByteArrayOutputStream().use { stream ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
+    private fun Bitmap.toJpegBytes(): ByteArray =
+        java.io.ByteArrayOutputStream().use { stream ->
+            compress(Bitmap.CompressFormat.JPEG, 100, stream)
             stream.toByteArray()
         }
 
-        val audioPicture = AudioPicture(
-            data = byteArray,
-            mimeType = "image/jpeg",
-            description = "",
-            pictureType = type.tagLibName
-        )
-
-        _uiState.update { state ->
-            state.withUpdatedPicture(
-                type = type,
-                displaySource = byteArray,
-                audioPicture = audioPicture
-            )
-        }
-    }
-
-    private fun EditMetadataUiState.withUpdatedPicture(
-        type: AudioPictureType,
+    private fun EditMetadataUiState.withUpdatedFrontCover(
         displaySource: Any?,
         audioPicture: AudioPicture
     ): EditMetadataUiState {
         val current = editingTagData ?: AudioTagData()
-        val newPictures = current.pictures.replacePicture(
+        return copy(
+            coverUri = displaySource,
             picture = audioPicture,
-            type = type
+            isEditing = true,
+            editingTagData = current.copy(
+                pictures = current.pictures.replacePicture(
+                    picture = audioPicture,
+                    type = AudioPictureType.FrontCover
+                ),
+                picUrl = null
+            )
         )
-        val nextTagData = current.copy(
-            pictures = newPictures,
-            picUrl = if (type == AudioPictureType.FrontCover) null else current.picUrl
-        )
-
-        return when (type) {
-            AudioPictureType.FrontCover -> copy(
-                coverUri = displaySource,
-                picture = audioPicture,
-                isEditing = true,
-                editingTagData = nextTagData
-            )
-            AudioPictureType.Artist -> copy(
-                artistImageUri = displaySource,
-                artistPicture = audioPicture,
-                isEditing = true,
-                editingTagData = nextTagData
-            )
-            else -> copy(
-                isEditing = true,
-                editingTagData = nextTagData
-            )
-        }
     }
 
     /**
@@ -579,23 +651,6 @@ class EditMetadataViewModel(
         }
     }
 
-    fun removeArtistImage() {
-        _uiState.update { state ->
-            val current = state.editingTagData ?: return@update state
-            val newPictures = current.pictures.removePictureType(AudioPictureType.Artist)
-            val displayPicture = newPictures.artistPictureOrFallback()
-
-            state.copy(
-                artistImageUri = displayPicture?.data,
-                artistPicture = displayPicture,
-                isEditing = true,
-                editingTagData = current.copy(
-                    pictures = newPictures
-                )
-            )
-        }
-    }
-
     /**
      * 导出当前封面到本地相册
      */
@@ -608,21 +663,6 @@ class EditMetadataViewModel(
             filenamePrefix = "Cover",
             failureLogMessage = "Failed to export cover",
             onResult = { success -> _uiState.update { it.copy(exportCoverResult = success) } }
-        )
-    }
-
-    /**
-     * 导出当前艺术家海报到本地相册
-     */
-    fun exportArtistImage(context: Context) {
-        val state = _uiState.value
-        exportPictureToGallery(
-            context = context,
-            source = state.artistImageUri ?: state.originalArtistImage ?: state.artistPicture?.data,
-            albumName = "ArtistPosters",
-            filenamePrefix = "Artist",
-            failureLogMessage = "Failed to export artist poster",
-            onResult = { success -> _uiState.update { it.copy(exportArtistImageResult = success) } }
         )
     }
 
@@ -774,30 +814,16 @@ class EditMetadataViewModel(
         }
     }
 
-    fun revertArtistImage() {
-        _uiState.update { state ->
-            val original = state.originalTagData
-            val current = state.editingTagData ?: return@update state
-            val originalArtistPicture = original
-                ?.pictures
-                ?.pictureOfType(AudioPictureType.Artist)
-            val displayPicture = original?.pictures?.artistPictureOrFallback()
-            val revertedPictures = originalArtistPicture?.let { picture ->
-                current.pictures
-                    .removePictureType(AudioPictureType.Artist)
-                    .replacePicture(
-                        picture = picture,
-                        type = AudioPictureType.Artist
-                    )
-            } ?: current.pictures.removePictureType(AudioPictureType.Artist)
-
-            state.copy(
-                artistImageUri = state.originalArtistImage,
-                artistPicture = displayPicture,
-                editingTagData = current.copy(
-                    pictures = revertedPictures
-                )
-            )
+    /**
+     * 还原所有艺术家海报。
+     *
+     * 这是唯一的还原入口：逐张还原需要知道「这张图原来是哪张」，而重挂会同时删掉目标艺术家原来的
+     * 海报、裁剪会改数据，光靠当前的图片内容推断不出来，猜错就是丢图或贴错别人的图。
+     */
+    fun revertArtistImages() {
+        updateArtistPictures { pictures, original ->
+            if (original == null) pictures
+            else ArtistPosterEdits.revertAll(pictures, original.pictures)
         }
     }
 
@@ -821,16 +847,10 @@ class EditMetadataViewModel(
         }
     }
 
-    fun restoreArtistImageSnapshot(
-        artistImageUri: Any?,
-        artistPicture: AudioPicture?,
-        pictures: List<AudioPicture>
-    ) {
+    fun restoreArtistImageSnapshot(pictures: List<AudioPicture>) {
         _uiState.update { state ->
             val current = state.editingTagData ?: return@update state
             state.copy(
-                artistImageUri = artistImageUri,
-                artistPicture = artistPicture,
                 isEditing = true,
                 editingTagData = current.copy(
                     pictures = pictures
@@ -866,13 +886,18 @@ class EditMetadataViewModel(
                     visibleFieldCodes = editFieldConfigRepository.configFlow.first()
                         .visibleFieldCodesForScene(EditFieldScene.SingleEdit),
                 )
-                when (val saveResult = overwriteSongTagsUseCase(uriString, audioTagData)) {
+                when (
+                    val saveResult = overwriteSongTagsUseCase(
+                        uri = uriString,
+                        tagData = audioTagData,
+                        // 用户基于读取到的图片列表改过图（含删空）时，必须把这份列表写下去
+                        picturesAuthored = audioTagData.pictures != state.originalTagData?.pictures
+                    )
+                ) {
                     is SaveAudioTagsResult.Success -> {
                         val savedTagData = saveResult.tagData
                         val savedDisplayPicture = savedTagData.pictures.frontCoverOrFallback()
                         val savedDisplayCover = savedDisplayPicture?.data
-                        val savedArtistPicture = savedTagData.pictures.artistPictureOrFallback()
-                        val savedArtistImage = savedArtistPicture?.data
 
                         _uiState.update {
                             it.copy(
@@ -884,9 +909,6 @@ class EditMetadataViewModel(
                                 originalCover = savedDisplayCover,
                                 coverUri = savedDisplayCover,
                                 picture = savedDisplayPicture,
-                                originalArtistImage = savedArtistImage,
-                                artistImageUri = savedArtistImage,
-                                artistPicture = savedArtistPicture,
                             )
                         }
                         currentSong = saveResult.song

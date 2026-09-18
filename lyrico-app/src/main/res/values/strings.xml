@@ -461,6 +461,16 @@
     <string name="label_crop_artist_image">Crop artist poster</string>
     <string name="msg_read_artist_image_failed">Failed to read artist poster</string>
     <string name="edit_artist_image">Edit Artist Poster</string>
+    <string name="label_reassign_artist_image">Reassign “%1$s” to an artist</string>
+    <string name="label_select_artist">Select Artist</string>
+    <string name="label_select_artist_image">Select Artist Poster</string>
+    <string name="label_artist_image_count">%1$d posters (only one is kept)</string>
+    <string name="label_artist_image_exists">Poster set</string>
+    <string name="label_artist_image_duplicate">%1$s (%2$d/%3$d)</string>
+    <string name="label_artist_image_unmatched">Not linked to an artist</string>
+    <string name="artist_image_untagged">Untagged</string>
+    <string name="msg_artist_field_empty_for_poster">Fill in the artist field first</string>
+    <string name="msg_artist_image_reassigned">Poster moved to %1$s</string>
     <string name="chinese_conversion_mode_none">None</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">CHT -> CHS</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">CHS -> CHT</string>

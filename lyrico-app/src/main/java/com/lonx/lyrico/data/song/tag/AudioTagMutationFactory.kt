@@ -7,9 +7,15 @@ import com.lonx.audiotag.model.AudioTagData
 import com.lonx.audiotag.model.CustomTagField
 
 object AudioTagMutationFactory {
+    /**
+     * @param picturesAuthored 调用方是否已经拿到过完整的图片列表（读取成功）并且用户改过它。
+     *   没有它就无法区分「用户把图片删光了」和「这次读取没拿到图片」——前者必须写成空列表，
+     *   后者绝不能写，否则会把文件里原有的图片抹掉。
+     */
     fun fromAudioTagData(
         data: AudioTagData,
-        mode: AudioTagMutationMode
+        mode: AudioTagMutationMode,
+        picturesAuthored: Boolean = false
     ): AudioTagMutation {
         val patchMode = mode == AudioTagMutationMode.Patch
         val fields = buildMap {
@@ -49,7 +55,7 @@ object AudioTagMutationFactory {
             mode = mode,
             fields = fields,
             customFields = customFields,
-            pictureUpdate = data.toPictureUpdate(mode)
+            pictureUpdate = data.toPictureUpdate(mode, picturesAuthored)
         )
     }
 
@@ -75,11 +81,14 @@ object AudioTagMutationFactory {
         }
     }
 
-    private fun AudioTagData.toPictureUpdate(mode: AudioTagMutationMode): PictureUpdate {
+    private fun AudioTagData.toPictureUpdate(
+        mode: AudioTagMutationMode,
+        picturesAuthored: Boolean
+    ): PictureUpdate {
         val picUrl = picUrl
         if (picUrl != null) {
             val normalizedPicUrl = picUrl.trim()
-            val basePictures = pictures.asOverwriteBase(mode)
+            val basePictures = pictures.asOverwriteBase(mode, picturesAuthored)
             return if (normalizedPicUrl.isEmpty()) {
                 PictureUpdate.RemovePicture(
                     type = AudioPictureType.FrontCover,
@@ -100,16 +109,27 @@ object AudioTagMutationFactory {
             }
         }
 
-        return if (mode == AudioTagMutationMode.Overwrite && pictures.isNotEmpty()) {
+        // 用户的改动以这份列表为准：即使被删空也要写下去（picturesAuthored 为 true）
+        return if (mode == AudioTagMutationMode.Overwrite && (picturesAuthored || pictures.isNotEmpty())) {
             PictureUpdate.ReplaceAll(pictures)
         } else {
             PictureUpdate.Unchanged
         }
     }
 
+    /**
+     * 换封面时用来承载其余图片的基准列表。
+     *
+     * 用户改过图（[picturesAuthored]）时，**空列表也是有效基准**：否则下游会退回磁盘上的旧
+     * 图片，「先把艺术家海报删光、再换封面」这种操作就会把删掉的海报又找回来。
+     * 没改过图时保持 `null`，让下游沿用磁盘内容，避免读取失败时误删图片。
+     */
     private fun List<AudioPicture>.asOverwriteBase(
-        mode: AudioTagMutationMode
+        mode: AudioTagMutationMode,
+        picturesAuthored: Boolean
     ): List<AudioPicture>? {
-        return takeIf { mode == AudioTagMutationMode.Overwrite && it.isNotEmpty() }
+        return takeIf {
+            mode == AudioTagMutationMode.Overwrite && (picturesAuthored || it.isNotEmpty())
+        }
     }
 }

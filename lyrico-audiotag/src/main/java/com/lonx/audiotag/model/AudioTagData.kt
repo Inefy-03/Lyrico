@@ -58,14 +58,27 @@ data class AudioPicture(
     val description: String = "",
     val pictureType: String = "Front Cover"
 ): Parcelable {
+    /**
+     * 比较图片数据与归属信息。
+     *
+     * 早期实现只比较 [data]，于是「同图不同描述」的两张图片互相相等：改描述不会让列表或
+     * [AudioTagData] 变得「不相等」，按列表做 `remember`/去重就会漏掉艺术家归属的修改。
+     * 图片类型同理——艺术家图片靠 [description] 区分归属、靠 [pictureType] 区分用途。
+     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is AudioPicture) return false
-        if (!data.contentEquals(other.data)) return false
-        return true
+        if (mimeType != other.mimeType) return false
+        if (description != other.description) return false
+        if (pictureType != other.pictureType) return false
+        return data.contentEquals(other.data)
     }
 
     override fun hashCode(): Int {
-        return data.contentHashCode()
+        var result = data.contentHashCode()
+        result = 31 * result + mimeType.hashCode()
+        result = 31 * result + description.hashCode()
+        result = 31 * result + pictureType.hashCode()
+        return result
     }
 }

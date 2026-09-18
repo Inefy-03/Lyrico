@@ -225,11 +225,15 @@ object AudioTagReader {
             }
         }
     }
+    /**
+     * @param description 需要优先匹配的图片描述（艺术家图片用它记录归属），为空时只按类型取。
+     */
     suspend fun readPicture(
         pfd: ParcelFileDescriptor,
         pictureType: AudioPictureType = AudioPictureType.FrontCover,
         fallbackPictureTypes: List<AudioPictureType> = emptyList(),
-        fallbackToAny: Boolean = pictureType == AudioPictureType.FrontCover
+        fallbackToAny: Boolean = pictureType == AudioPictureType.FrontCover,
+        description: String? = null
     ): ByteArray {
         return withContext(Dispatchers.IO) {
             try {
@@ -238,7 +242,8 @@ object AudioTagReader {
                     fd = metaFd,
                     pictureType = pictureType,
                     fallbackPictureTypes = fallbackPictureTypes,
-                    fallbackToAny = fallbackToAny
+                    fallbackToAny = fallbackToAny,
+                    description = description
                 )
                 val pic = metadata?.data
                 return@withContext pic ?: byteArrayOf()

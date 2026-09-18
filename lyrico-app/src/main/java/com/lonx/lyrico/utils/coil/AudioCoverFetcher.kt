@@ -26,6 +26,7 @@ class AudioCoverFetcher(
     private val candidates: List<CoverCandidate>,
     private val artistName: String?,
     private val artistPosterFolders: List<String>,
+    private val skipEmbeddedPictures: Boolean,
     private val options: Options
 ) : Fetcher {
 
@@ -34,9 +35,14 @@ class AudioCoverFetcher(
             ?: listOf(CoverCandidate(uri, 0L))
 
         val pictureBytes = withContext(Dispatchers.IO) {
-            readRequestedPicture(candidateList)
-                ?: readExternalArtistPoster(options.context, artistName, artistPosterFolders)
-                ?: readFallbackPicture(candidateList)
+            if (skipEmbeddedPictures) {
+                // 调用方已经自己决定过内嵌海报归属，这里只查外置海报文件
+                readExternalArtistPoster(options.context, artistName, artistPosterFolders)
+            } else {
+                readRequestedPicture(candidateList)
+                    ?: readExternalArtistPoster(options.context, artistName, artistPosterFolders)
+                    ?: readFallbackPicture(candidateList)
+            }
         } ?: return null
 
         if (pictureBytes.isEmpty()) {
@@ -65,7 +71,9 @@ class AudioCoverFetcher(
                         pfd = pfd,
                         pictureType = pictureType,
                         fallbackPictureTypes = fallbackPictureTypes,
-                        fallbackToAny = false
+                        fallbackToAny = false,
+                        // 艺术家图片用描述记录归属：同一首歌里属于别的艺术家的海报不能被当成这一位
+                        description = artistName
                     )
                 }
             }
@@ -105,6 +113,7 @@ class AudioCoverFetcher(
             candidates = data.candidates,
             artistName = data.artistName,
             artistPosterFolders = data.artistPosterFolders,
+            skipEmbeddedPictures = data.skipEmbeddedPictures,
             options = options
         )
     }

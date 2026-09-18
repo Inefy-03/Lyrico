@@ -449,6 +449,16 @@
     <string name="label_crop_artist_image">裁切演出者海報</string>
     <string name="msg_read_artist_image_failed">讀取演出者海報失敗</string>
     <string name="edit_artist_image">編輯演出者海報</string>
+    <string name="label_reassign_artist_image">重新選擇「%1$s」對應的演出者</string>
+    <string name="label_select_artist">選擇演出者</string>
+    <string name="label_select_artist_image">選擇演出者海報</string>
+    <string name="label_artist_image_count">已有 %1$d 張（只會保留一張）</string>
+    <string name="label_artist_image_exists">已有海報</string>
+    <string name="label_artist_image_duplicate">%1$s（第 %2$d/%3$d 張）</string>
+    <string name="label_artist_image_unmatched">未關聯演出者</string>
+    <string name="artist_image_untagged">未標註</string>
+    <string name="msg_artist_field_empty_for_poster">請先填寫演出者欄位</string>
+    <string name="msg_artist_image_reassigned">海報已改掛到「%1$s」</string>
     <string name="chinese_conversion_mode_none">不轉換</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">繁體轉簡體</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">簡體轉繁體</string>

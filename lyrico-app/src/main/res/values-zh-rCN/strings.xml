@@ -449,6 +449,16 @@
     <string name="label_crop_artist_image">裁剪艺术家海报</string>
     <string name="msg_read_artist_image_failed">读取艺术家海报失败</string>
     <string name="edit_artist_image">编辑艺术家海报</string>
+    <string name="label_reassign_artist_image">重新选择“%1$s”对应的艺术家</string>
+    <string name="label_select_artist">选择艺术家</string>
+    <string name="label_select_artist_image">选择艺术家海报</string>
+    <string name="label_artist_image_count">已有 %1$d 张（只会保留一张）</string>
+    <string name="label_artist_image_exists">已有海报</string>
+    <string name="label_artist_image_duplicate">%1$s（第 %2$d/%3$d 张）</string>
+    <string name="label_artist_image_unmatched">未关联艺术家</string>
+    <string name="artist_image_untagged">未标注</string>
+    <string name="msg_artist_field_empty_for_poster">请先填写艺术家字段</string>
+    <string name="msg_artist_image_reassigned">海报已改挂到“%1$s”</string>
     <string name="chinese_conversion_mode_none">不转换</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">繁体转简体</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">简体转繁体</string>

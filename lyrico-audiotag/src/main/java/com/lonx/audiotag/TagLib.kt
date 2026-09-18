@@ -6,6 +6,7 @@ import com.lonx.audiotag.model.AudioPropertiesReadStyle
 import com.lonx.audiotag.model.Metadata
 import com.lonx.audiotag.model.Picture
 import com.lonx.audiotag.model.PropertyMap
+import com.lonx.audiotag.model.artistPictureTypes
 
 /**
  * An object that provides access to the native TagLib library.
@@ -66,6 +67,15 @@ public object TagLib {
 
     /**
      * Get picture with the requested type from file descriptor.
+     *
+     * @param description Artist name this artwork must belong to. Artist artwork may contain several
+     *   pictures distinguished by their description, so when it is given:
+     *   1. a picture whose description matches (ignoring case and surrounding space) is used;
+     *   2. otherwise a picture **without** a description is used - those are files written before
+     *      descriptions were used, so they cannot contradict the request;
+     *   3. a picture carrying a *different* artist's description is never returned: showing another
+     *      artist's face is worse than showing nothing, and the caller still has the external poster
+     *      folder to fall back on.
      */
     @JvmStatic
     public fun getPicture(
@@ -73,8 +83,34 @@ public object TagLib {
         pictureType: AudioPictureType,
         fallbackPictureTypes: List<AudioPictureType> = emptyList(),
         fallbackToAny: Boolean = false,
+        description: String? = null,
     ): Picture? {
         val pictures = getPictures(fd)
+        val types = listOf(pictureType) + fallbackPictureTypes
+        val requested = description?.trim()?.takeIf { it.isNotEmpty() }
+
+        if (requested != null) {
+            return types.firstNotNullOfOrNull { type ->
+                pictures.find { picture ->
+                    picture.pictureType == type.tagLibName &&
+                        picture.description.trim().equals(requested, ignoreCase = true)
+                }
+            }
+                ?: types.firstNotNullOfOrNull { type ->
+                    pictures.find { picture ->
+                        picture.pictureType == type.tagLibName && picture.description.isBlank()
+                    }
+                }
+                ?: if (fallbackToAny) {
+                    val artistTypeNames = artistPictureTypes.mapTo(mutableSetOf()) { it.tagLibName }
+                    pictures.firstOrNull { picture ->
+                        picture.pictureType !in artistTypeNames || picture.description.isBlank()
+                    }
+                } else {
+                    null
+                }
+        }
+
         return pictures.find { picture -> picture.pictureType == pictureType.tagLibName }
             ?: fallbackPictureTypes.firstNotNullOfOrNull { fallbackType ->
                 pictures.find { picture -> picture.pictureType == fallbackType.tagLibName }

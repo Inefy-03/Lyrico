@@ -17,7 +17,17 @@ data class CoverRequest(
     val candidates: List<CoverCandidate> = emptyList(),
     val artistName: String? = null,
     val artistPosterFolders: List<String> = emptyList(),
-    val artistPosterRevision: Long = 0L
+    val artistPosterRevision: Long = 0L,
+    /**
+     * 只查外置海报文件夹，跳过标签里的内嵌图片。
+     *
+     * 单曲编辑页需要它：编辑页自己按归属规则（[com.lonx.lyrico.domain.poster.ArtistPosterGrouping]）
+     * 把每张内嵌海报分给了某位艺术家，而 `TagLib.getPicture` 的描述回退是另一套规则（描述为空
+     * 就当作通用图）。两边对同一张「没有描述」的图片会给出不同答案——多艺术家时编辑页认为它归属
+     * 不明，取图链路却把它当成任何一位艺术家的海报，于是几位艺术家显示同一张图、各自的海报文件
+     * 反而永远查不到。编辑页只用这个请求查文件，归属判断只保留一处。
+     */
+    val skipEmbeddedPictures: Boolean = false
 ) {
     companion object {
         /**
@@ -30,13 +40,15 @@ data class CoverRequest(
             pictureType: AudioPictureType,
             fallbackPictureTypes: List<AudioPictureType>,
             fallbackToAny: Boolean,
-            candidates: List<CoverCandidate> = emptyList()
+            candidates: List<CoverCandidate> = emptyList(),
+            skipEmbeddedPictures: Boolean = false
         ): String {
             val fallbackKey = fallbackPictureTypes.joinToString(",") { it.tagLibName }
             val candidateKey = candidates.joinToString("|") {
                 "${it.uri}@${it.lastUpdate}"
             }
-            return "$path@${pictureType.tagLibName}@$fallbackKey@$fallbackToAny@$timestamp@$candidateKey"
+            return "$path@${pictureType.tagLibName}@$fallbackKey@$fallbackToAny@$timestamp@$candidateKey" +
+                "@embedded:${!skipEmbeddedPictures}"
         }
     }
 }
