@@ -457,8 +457,14 @@
     <string name="label_artist_image_duplicate">%1$s（第 %2$d/%3$d 张）</string>
     <string name="label_artist_image_unmatched">未关联艺术家</string>
     <string name="artist_image_untagged">未标注</string>
+    <string name="label_image_source_embedded">内嵌</string>
+    <string name="label_image_source_external">外部文件</string>
     <string name="msg_artist_field_empty_for_poster">请先填写艺术家字段</string>
     <string name="msg_artist_image_reassigned">海报已改挂到“%1$s”</string>
+    <string name="label_artist_image_conflict_title">“%1$s”已有海报</string>
+    <string name="label_artist_image_conflict_message">交换归属会保留两张海报，替换会删除原有海报</string>
+    <string name="label_artist_image_swap">交换归属</string>
+    <string name="label_artist_image_replace">直接替换</string>
     <string name="chinese_conversion_mode_none">不转换</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">繁体转简体</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">简体转繁体</string>

@@ -68,14 +68,15 @@ public object TagLib {
     /**
      * Get picture with the requested type from file descriptor.
      *
-     * @param description Artist name this artwork must belong to. Artist artwork may contain several
+     * @param description Artist name this artwork belongs to. Artist artwork may contain several
      *   pictures distinguished by their description, so when it is given:
      *   1. a picture whose description matches (ignoring case and surrounding space) is used;
      *   2. otherwise a picture **without** a description is used - those are files written before
      *      descriptions were used, so they cannot contradict the request;
-     *   3. a picture carrying a *different* artist's description is never returned: showing another
-     *      artist's face is worse than showing nothing, and the caller still has the external poster
-     *      folder to fall back on.
+     *   3. otherwise [fallbackToAny] decides: true returns a picture that carries *another* artist's
+     *      description. That is a last resort the caller is expected to try only after its own
+     *      alternatives (e.g. the external poster folders), because hiding the picture entirely would
+     *      leave the user with no way to see - or re-assign - what is actually in the tag.
      */
     @JvmStatic
     public fun getPicture(
@@ -101,14 +102,7 @@ public object TagLib {
                         picture.pictureType == type.tagLibName && picture.description.isBlank()
                     }
                 }
-                ?: if (fallbackToAny) {
-                    val artistTypeNames = artistPictureTypes.mapTo(mutableSetOf()) { it.tagLibName }
-                    pictures.firstOrNull { picture ->
-                        picture.pictureType !in artistTypeNames || picture.description.isBlank()
-                    }
-                } else {
-                    null
-                }
+                ?: if (fallbackToAny) pictures.firstOrNull() else null
         }
 
         return pictures.find { picture -> picture.pictureType == pictureType.tagLibName }

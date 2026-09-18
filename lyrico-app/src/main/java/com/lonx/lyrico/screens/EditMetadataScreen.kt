@@ -124,6 +124,7 @@ import com.lonx.lyrico.ui.theme.LyricoColors
 import com.lonx.lyrico.utils.CoverSourceType
 import com.lonx.lyrico.utils.LyricDecoder
 import com.lonx.lyrico.utils.getCoverSourceType
+import com.lonx.lyrico.utils.coil.readExternalArtistPoster
 import com.lonx.lyrico.viewmodel.EditMetadataViewModel
 import com.lonx.lyrico.viewmodel.isEqualIgnoringBlank
 import com.ramcosta.composedestinations.annotation.Destination
@@ -375,6 +376,13 @@ fun EditMetadataScreen(
                             isArtistPictureModified(it.picture, originalArtistPictures)
                         } ?: !page.showExternalPoster,
                         isUnmatched = entry?.isUnmatched == true,
+                        sourceLabel = if (entry != null) {
+                            stringResource(R.string.label_image_source_embedded)
+                        } else if (page.showExternalPoster) {
+                            stringResource(R.string.label_image_source_external)
+                        } else {
+                            null
+                        },
                         onClick = { artistPosterMenu.open(entry) },
                         onRevertClick = {
                             val previousPictures = editingTagData?.pictures.orEmpty()
@@ -1445,6 +1453,24 @@ fun EditMetadataScreen(
         }
     }
 
+    /** 重新绑定：目标艺术家已有海报时，等用户选「交换归属」还是「直接替换」。 */
+    var pendingRebind by remember { mutableStateOf<PendingRebind?>(null) }
+
+    /** 改挂归属，给一次反悔机会。 */
+    fun applyRebind(target: AudioPicture, artistName: String, swap: Boolean = false) {
+        val previousPictures = editingTagData?.pictures.orEmpty()
+        if (swap) {
+            viewModel.swapArtistImages(target, artistName)
+        } else {
+            viewModel.reassignArtistImages(target, artistName)
+        }
+        showUndoSnackbar(
+            context.getString(R.string.msg_artist_image_reassigned, artistName)
+        ) {
+            viewModel.restoreArtistImageSnapshot(previousPictures)
+        }
+    }
+
     // 艺术家海报的操作菜单与选择面板
     ArtistPosterMenu(
         state = artistPosterMenu,
@@ -1457,13 +1483,15 @@ fun EditMetadataScreen(
         onExport = { viewModel.exportArtistImage(context, it) },
         onCrop = { cropArtistImage(it) },
         onReassign = { target, artistName ->
-            // 该艺术家原有的海报会被顶掉，给一次反悔机会
-            val previousPictures = editingTagData?.pictures.orEmpty()
-            viewModel.reassignArtistImages(target, artistName)
-            showUndoSnackbar(
-                context.getString(R.string.msg_artist_image_reassigned, artistName)
-            ) {
-                viewModel.restoreArtistImageSnapshot(previousPictures)
+            val ownerKey = ArtistPosterGrouping.ownerKeyOf(artistName)
+            val occupied = artistPictureEntries.any {
+                it.picture !== target && it.artist != null && it.ownerKey == ownerKey
+            }
+            if (occupied) {
+                // 目标艺术家已有海报：让用户决定是交换归属还是直接替换掉它
+                pendingRebind = PendingRebind(target, artistName)
+            } else {
+                applyRebind(target, artistName)
             }
         },
         onMissingArtist = {
@@ -1580,6 +1608,44 @@ fun EditMetadataScreen(
         }
     }
     // 添加自定义标签 dialog
+    // 目标艺术家已有海报：交换归属，还是把原来那张替换掉
+    pendingRebind?.let { pending ->
+        WindowDialog(
+            show = true,
+            title = stringResource(R.string.label_artist_image_conflict_title, pending.artistName),
+            onDismissRequest = { pendingRebind = null }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.label_artist_image_conflict_message),
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        text = stringResource(R.string.label_artist_image_swap),
+                        onClick = {
+                            pendingRebind = null
+                            applyRebind(pending.target, pending.artistName, swap = true)
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(20.dp))
+                    TextButton(
+                        text = stringResource(R.string.label_artist_image_replace),
+                        onClick = {
+                            pendingRebind = null
+                            applyRebind(pending.target, pending.artistName)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
+                    )
+                }
+            }
+        }
+    }
+
     WindowDialog(
         show = showAddCustomTagDialog,
         title = stringResource(R.string.action_add_custom_tag),
@@ -1783,6 +1849,9 @@ private fun PlainLyricsToggleChip(
     }
 }
 
+/** 等待用户决定「交换归属」还是「直接替换」的一次重新绑定。 */
+private data class PendingRebind(val target: AudioPicture, val artistName: String)
+
 /** 当前正在裁剪的目标。 */
 private sealed interface CropRequest {
     data object Cover : CropRequest
@@ -1808,6 +1877,8 @@ private data class PicturePagerItem(
     val isModified: Boolean,
     /** 描述对不上任何已有艺术家，标签会用警示色提示。 */
     val isUnmatched: Boolean = false,
+    /** 图片来源说明（内嵌在标签里 / 来自外置海报文件夹），显示在尺寸旁边。 */
+    val sourceLabel: String? = null,
     val onClick: () -> Unit,
     val onRevertClick: () -> Unit
 )
@@ -1837,43 +1908,56 @@ private fun CoverSection(
                 try {
                     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
 
-                    when (getCoverSourceType(currentImageSource)) {
-                        CoverSourceType.BYTE_ARRAY -> {
-                            val bytes = currentImageSource as ByteArray
+                    if (currentImageSource is CoverRequest) {
+                        // 外置海报是文件夹里的文件，UI 手里没有字节：按文件名读出来量一下尺寸。
+                        // 只有当前这一页会走到这里，读的是与取图相同的那份文件。
+                        val bytes = readExternalArtistPoster(
+                            context = context,
+                            artist = currentImageSource.artistName,
+                            folders = currentImageSource.artistPosterFolders
+                        )
+                        if (bytes != null && bytes.isNotEmpty()) {
                             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
                         }
-
-                        CoverSourceType.BITMAP -> {
-                            val bitmap = currentImageSource as Bitmap
-                            return@withContext bitmap.width to bitmap.height
-                        }
-
-                        CoverSourceType.NETWORK_URL -> {
-                            val source = currentImageSource.toString().trim()
-                            URL(source).openStream().use { stream ->
-                                BitmapFactory.decodeStream(stream, null, options)
+                    } else {
+                        when (getCoverSourceType(currentImageSource)) {
+                            CoverSourceType.BYTE_ARRAY -> {
+                                val bytes = currentImageSource as ByteArray
+                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
                             }
-                        }
 
-                        CoverSourceType.CONTENT_OR_FILE_URI,
-                        CoverSourceType.URI -> {
-                            val uri = when (currentImageSource) {
-                                is Uri -> currentImageSource
-                                is String -> currentImageSource.trim().toUri()
-                                else -> null
+                            CoverSourceType.BITMAP -> {
+                                val bitmap = currentImageSource as Bitmap
+                                return@withContext bitmap.width to bitmap.height
                             }
-                            uri?.let {
-                                context.contentResolver.openInputStream(it)?.use { stream ->
+
+                            CoverSourceType.NETWORK_URL -> {
+                                val source = currentImageSource.toString().trim()
+                                URL(source).openStream().use { stream ->
                                     BitmapFactory.decodeStream(stream, null, options)
                                 }
                             }
-                        }
 
-                        CoverSourceType.FILE_PATH -> {
-                            BitmapFactory.decodeFile(currentImageSource.toString().trim(), options)
-                        }
+                            CoverSourceType.CONTENT_OR_FILE_URI,
+                            CoverSourceType.URI -> {
+                                val uri = when (currentImageSource) {
+                                    is Uri -> currentImageSource
+                                    is String -> currentImageSource.trim().toUri()
+                                    else -> null
+                                }
+                                uri?.let {
+                                    context.contentResolver.openInputStream(it)?.use { stream ->
+                                        BitmapFactory.decodeStream(stream, null, options)
+                                    }
+                                }
+                            }
 
-                        CoverSourceType.UNSUPPORTED -> null
+                            CoverSourceType.FILE_PATH -> {
+                                BitmapFactory.decodeFile(currentImageSource.toString().trim(), options)
+                            }
+
+                            CoverSourceType.UNSUPPORTED -> null
+                        }
                     }
 
                     if (options.outWidth > 0 && options.outHeight > 0) {
@@ -1987,7 +2071,12 @@ private fun CoverSection(
                                 }
 
                                 if (page == currentPage) {
-                                    imageSize?.let {
+                                    // 尺寸 + 图片来源（内嵌在标签里 / 来自外置海报文件夹）
+                                    val info = listOfNotNull(
+                                        imageSize?.let { "${it.first}×${it.second}" },
+                                        item.sourceLabel
+                                    ).joinToString(" · ")
+                                    if (info.isNotEmpty()) {
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.BottomStart)
@@ -1999,7 +2088,7 @@ private fun CoverSection(
                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                         ) {
                                             Text(
-                                                text = "${it.first}×${it.second}",
+                                                text = info,
                                                 color = Color.White,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold

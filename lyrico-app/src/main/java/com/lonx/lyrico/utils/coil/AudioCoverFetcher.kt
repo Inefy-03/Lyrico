@@ -41,6 +41,10 @@ class AudioCoverFetcher(
             } else {
                 readRequestedPicture(candidateList)
                     ?: readExternalArtistPoster(options.context, artistName, artistPosterFolders)
+                    // 只有描述对不上的内嵌图（例如整首歌只有别的艺术家的海报）时，也要显示出来，
+                    // 否则标签里明明有图却什么都不显示、用户也没法把它重新关联给某位艺术家。
+                    // 放在外置海报之后：它是兜底，不该挡住这位艺术家自己的海报文件。
+                    ?: readRequestedPicture(candidateList, includeOtherArtists = artistName != null)
                     ?: readFallbackPicture(candidateList)
             }
         } ?: return null
@@ -61,7 +65,8 @@ class AudioCoverFetcher(
     }
 
     private suspend fun readRequestedPicture(
-        candidates: List<CoverCandidate>
+        candidates: List<CoverCandidate>,
+        includeOtherArtists: Boolean = false
     ): ByteArray? {
         for (candidate in candidates) {
             // A missing or unreadable candidate must not stop the poster folder lookup below.
@@ -71,8 +76,8 @@ class AudioCoverFetcher(
                         pfd = pfd,
                         pictureType = pictureType,
                         fallbackPictureTypes = fallbackPictureTypes,
-                        fallbackToAny = false,
-                        // 艺术家图片用描述记录归属：同一首歌里属于别的艺术家的海报不能被当成这一位
+                        fallbackToAny = includeOtherArtists,
+                        // 艺术家图片用描述记录归属：默认只认描述对得上（或没写描述）的那些
                         description = artistName
                     )
                 }

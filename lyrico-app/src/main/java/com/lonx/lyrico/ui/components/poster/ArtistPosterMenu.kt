@@ -122,8 +122,6 @@ fun ArtistPosterMenu(
     onMissingArtist: () -> Unit,
 ) {
     val untaggedLabel = stringResource(R.string.artist_image_untagged)
-    // 同一归属（同描述）的多张图片是「同一批归属未定」，重挂时一起改
-    val unmatchedOwners = entries.filter { it.isUnmatched }.distinctBy { it.ownerKey }
 
     fun runEntryAction(request: PosterPickerRequest, entry: ArtistPictureEntry) {
         when (request) {
@@ -233,24 +231,23 @@ fun ArtistPosterMenu(
                 }
             }
 
-            // 描述和当前艺术家都对不上的海报（通常是艺术家字段被改过），让用户重新指定归属
-            if (unmatchedOwners.isNotEmpty()) {
+            // 重新绑定：描述对不上（空的、或对不上任何艺术家）要能绑，已经对上的也要能改。
+            // 作用于当前这一页的海报，所以在封面页打开菜单时不显示。
+            if (currentEntry != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Card(
                     colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer)
                 ) {
-                    unmatchedOwners.forEach { entry ->
-                        ArrowPreference(
-                            title = stringResource(
-                                R.string.label_reassign_artist_image,
-                                entry.displayName(untaggedLabel)
-                            ),
-                            onClick = {
-                                state.closeOptions()
-                                reassign(entry.picture)
-                            }
-                        )
-                    }
+                    ArrowPreference(
+                        title = stringResource(
+                            R.string.label_reassign_artist_image,
+                            currentEntry.displayName(untaggedLabel)
+                        ),
+                        onClick = {
+                            state.closeOptions()
+                            reassign(currentEntry.picture)
+                        }
+                    )
                 }
             }
         }

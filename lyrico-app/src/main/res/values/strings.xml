@@ -469,8 +469,14 @@
     <string name="label_artist_image_duplicate">%1$s (%2$d/%3$d)</string>
     <string name="label_artist_image_unmatched">Not linked to an artist</string>
     <string name="artist_image_untagged">Untagged</string>
+    <string name="label_image_source_embedded">Embedded</string>
+    <string name="label_image_source_external">Poster file</string>
     <string name="msg_artist_field_empty_for_poster">Fill in the artist field first</string>
     <string name="msg_artist_image_reassigned">Poster moved to %1$s</string>
+    <string name="label_artist_image_conflict_title">“%1$s” already has a poster</string>
+    <string name="label_artist_image_conflict_message">Swap keeps both posters; replace deletes the current one</string>
+    <string name="label_artist_image_swap">Swap artists</string>
+    <string name="label_artist_image_replace">Replace</string>
     <string name="chinese_conversion_mode_none">None</string>
     <string name="chinese_conversion_mode_traditional_to_simplified">CHT -> CHS</string>
     <string name="chinese_conversion_mode_simplified_to_traditional">CHS -> CHT</string>

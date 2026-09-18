@@ -78,6 +78,30 @@ Tap the cover area or "Cover Options" in the editor to:
 
 Online cover search requires a plugin that supports cover search. Tap **Load more** at the bottom of the results; the **All** tab continues every cover source that still has another page.
 
+## Artist Poster Operations
+
+Swipe the cover area to reach the artist posters. A song with several artists gets one poster per artist.
+
+Which artist a picture belongs to is recorded in the picture's **description**. A picture whose description is empty, or names an artist that is not in the artist field, gets a page of its own (amber label) to show it has no owner.
+
+Tap "Artist poster options" (or the poster on the current page) to:
+
+| Action | Description |
+|--------|-------------|
+| Choose Artist Poster from This Device | Pick a local image from the system picker. With several artists you pick the owner first; that artist's current poster is replaced |
+| Reassign “…” to an artist | Move the current poster to another artist. If that artist already has one, choose **Swap artists** (both posters stay and exchange owners) or **Replace** (the current one is deleted) |
+| Remove Artist Poster | Delete the current artist poster |
+| Save Artist Poster | Export the current artist poster to the system pictures directory |
+| Crop artist poster | Crop the current artist poster before applying |
+
+An artist with no embedded poster is looked up by file name in your [artist poster folders](./library.md) — one file per artist, e.g. `Artist.jpg`. Those posters are for display only and are never written into the song; only embedded or locally picked posters are saved into the file.
+
+The current page shows the image size and where the picture comes from (embedded or poster file).
+
+::: tip Description no longer matches?
+After you edit the artist field, an old poster's description may no longer match anyone. Such posters are still listed in the editor; "Reassign … to an artist" in their menu binds them again.
+:::
+
 ## Lyrics Operations
 
 Tap "Lyrics Options" to:

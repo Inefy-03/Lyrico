@@ -87,6 +87,47 @@ class ArtistPosterEditsTest {
         assertSame(lookalike, replaced[1])
     }
 
+    @Test
+    fun swapOwnersExchangesTheTwoArtistsWithoutLosingEitherPicture() {
+        val a = artist("A", seed = 1)
+        val c = artist("C", seed = 2)
+        val pictures = listOf(a, c)
+
+        val result = ArtistPosterEdits.swapOwners(pictures, listOf("A", "C"), target = c, artistName = "A")
+
+        assertEquals(2, result.size)
+        assertEquals("A", result[1].description)
+        assertEquals("C", result[0].description)
+        // 改描述必然产生新实例，但两张图都还在（谁都没丢）
+        assertEquals(a.data.toList(), result[0].data.toList())
+        assertEquals(c.data.toList(), result[1].data.toList())
+    }
+
+    @Test
+    fun swapOwnersSendsTheTargetsOldDescriptionToTheOtherPicture() {
+        // 目标原本没有归属（描述为空）：另一张换过去也变成没有归属，而不是被丢掉
+        val unbound = artist("", seed = 1)
+        val a = artist("A", seed = 2)
+
+        val result = ArtistPosterEdits.swapOwners(
+            pictures = listOf(unbound, a),
+            artistNames = listOf("A"),
+            target = unbound,
+            artistName = "A"
+        )
+
+        assertEquals("A", result[0].description)
+        assertEquals("", result[1].description)
+    }
+
+    @Test
+    fun swapOwnersIsANoOpWhenTheArtistHasNoPoster() {
+        val a = artist("A", seed = 1)
+        val pictures = listOf(a)
+
+        assertSame(pictures, ArtistPosterEdits.swapOwners(pictures, listOf("A", "B"), a, "B"))
+    }
+
     // ------------------------------------------------------------ reassign
 
     @Test
@@ -145,11 +186,11 @@ class ArtistPosterEditsTest {
     }
 
     /**
-     * 回归：原来的实现把艺术家图片一律追加到末尾，`[艺术家, 封面]` 会被重排成 `[封面, 艺术家]`，
-     * 于是整份列表与原始列表「不相等」，看起来还原了其实没还原。
+     * 回归：还原只换艺术家图片，不该动用户当前的排列。
+     * 用户把艺术家海报和封面的顺序对调过，还原后非艺术家图片必须留在原处。
      */
     @Test
-    fun revertAllKeepsTheOriginalPictureOrder() {
+    fun revertAllKeepsTheCurrentOrderOfOtherPictures() {
         val originalArtist = artist("A", seed = 1)
         val cover = cover()
         val editedArtist = artist("A", seed = 9)
@@ -159,7 +200,7 @@ class ArtistPosterEditsTest {
 
         val result = ArtistPosterEdits.revertAll(pictures, original)
 
-        assertEquals(original, result)
+        assertEquals(listOf(originalArtist, cover), result)
     }
 
     @Test
@@ -174,14 +215,15 @@ class ArtistPosterEditsTest {
     }
 
     @Test
-    fun revertAllAppendsPicturesTheUserAdded() {
+    fun revertAllKeepsTheOriginalLayoutWhenTheUserAddedPictures() {
         val originalArtist = artist("A", seed = 1)
-        val cover = cover()
+        val cover = cover(seed = 1)
         val added = cover(seed = 2)
         val original = listOf(originalArtist, cover)
 
         val result = ArtistPosterEdits.revertAll(listOf(cover, added, artist("A", seed = 9)), original)
 
+        // 艺术家海报回到封面之前（原始布局），用户新加的图跟在封面后面
         assertEquals(listOf(originalArtist, cover, added), result)
     }
 
@@ -217,8 +259,14 @@ class ArtistPosterEditsTest {
         assertEquals(listOf(originalArtist, backPicture), result)
     }
 
+    /**
+     * 原始布局里艺术家海报在封面之前，还原后它也要回到封面之前。
+     *
+     * 就地替换（把艺术家位换回原图）会得到 `[新封面, 艺术家]`，布局与原始相反；对没有标准
+     * 封面的文件，`frontCoverOrFallback()` 会退回「第一张图」，布局变了那一页就换成别的图了。
+     */
     @Test
-    fun revertAllKeepsAReplacementCoverBeforeAnOriginallyLeadingArtistPoster() {
+    fun revertAllPutsAnOriginallyLeadingArtistPosterBackBeforeTheCover() {
         val originalArtist = artist("A", seed = 1)
         val originalCover = cover(seed = 2)
         val replacementCover = cover(seed = 3)
@@ -229,7 +277,7 @@ class ArtistPosterEditsTest {
             original = original
         )
 
-        assertEquals(listOf(replacementCover, originalArtist), result)
+        assertEquals(listOf(originalArtist, replacementCover), result)
     }
 
     /**

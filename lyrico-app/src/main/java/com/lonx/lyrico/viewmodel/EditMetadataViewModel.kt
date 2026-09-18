@@ -508,12 +508,24 @@ class EditMetadataViewModel(
     /**
      * 把 [target] 这一组艺术家海报改挂到 [artistName]。
      *
-     * 艺术家字段被编辑后，旧海报的描述会对不上任何艺术家，用户需要在这里重新指定；
-     * 该艺术家原有的海报会被替换掉。
+     * 描述对不上任何艺术家时用户需要在这里重新指定；该艺术家原有的海报会被替换掉。
+     * 目标艺术家已有海报且用户想两张都留下时用 [swapArtistImages]。
      */
     fun reassignArtistImages(target: AudioPicture, artistName: String) {
         updateArtistPictures { pictures, _ ->
             ArtistPosterEdits.reassign(
+                pictures = pictures,
+                artistNames = currentArtistNames(),
+                target = target,
+                artistName = artistName
+            )
+        }
+    }
+
+    /** [target] 与 [artistName] 原有的海报**交换归属**，两张图都留着。 */
+    fun swapArtistImages(target: AudioPicture, artistName: String) {
+        updateArtistPictures { pictures, _ ->
+            ArtistPosterEdits.swapOwners(
                 pictures = pictures,
                 artistNames = currentArtistNames(),
                 target = target,

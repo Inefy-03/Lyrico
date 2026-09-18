@@ -30,7 +30,9 @@ For individual songs, move them to a separate folder and hide that folder.
 
 ### Embedded artist artwork vs. poster folders—which wins?
 
-**Embedded artwork** in the audio file (of the artist picture type) always wins. Only when a song has no usable embedded image does Lyrico look up a poster by file name in your artist poster folders. So a same-named poster file has no effect for an artist that already carries embedded artwork.
+This is decided **per artist**. Lyrico prefers the **embedded artwork** that belongs to that artist - the picture whose description names them, or an old picture with no description. Only when that artist has no usable embedded picture does it look up a poster by file name in your artist poster folders. So a same-named poster file has no effect for an artist that already carries embedded artwork, but it does not affect the other artists on the same song.
+
+If an embedded picture's description matches no artist (usually after the artist field was edited), it gets its own page in the editor, and it can be assigned to an artist from that page's menu.
 
 ### I added an artist poster folder but artists still show no image?
 

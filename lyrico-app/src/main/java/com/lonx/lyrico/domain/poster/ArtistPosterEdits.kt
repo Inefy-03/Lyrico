@@ -54,7 +54,36 @@ object ArtistPosterEdits {
         }
     }
 
-    /** 把 [target] 所在的归属整组改挂到 [artistName]；该艺术家原有的海报会被顶掉。 */
+    /**
+     * 把 [target] 改挂到 [artistName]，同时把该艺术家原有的那张换到 [target] 原来的归属上。
+     *
+     * 用于「目标艺术家已经有海报」时用户选择**交换归属**：两张图的描述互换，谁都不丢。
+     * 每一侧只处理一张（历史遗留的同名多张仍按原样留着）。
+     */
+    fun swapOwners(
+        pictures: List<AudioPicture>,
+        artistNames: List<String>,
+        target: AudioPicture,
+        artistName: String
+    ): List<AudioPicture> {
+        val entries = ArtistPosterGrouping.entries(pictures, artistNames)
+        val targetEntry = entries.firstOrNull { it.picture === target } ?: return pictures
+        val nextKey = ArtistPosterGrouping.ownerKeyOf(artistName)
+        val other = entries.firstOrNull { it.picture !== target && it.ownerKey == nextKey }
+            ?: return pictures
+
+        return pictures.map { picture ->
+            when {
+                picture === target -> picture.copy(description = artistName.trim())
+                picture === other.picture -> picture.copy(description = targetEntry.description)
+                else -> picture
+            }
+        }
+    }
+
+    /**
+     * 把 [target] 所在的归属整组改挂到 [artistName]；该艺术家原有的海报会被顶掉。
+     */
     fun reassign(
         pictures: List<AudioPicture>,
         artistNames: List<String>,
@@ -82,8 +111,12 @@ object ArtistPosterEdits {
      * 两个都做过就无法识别，任何启发式都会时而丢图、时而把别的艺术家的图恢复过来。整组还原是
      * 唯一能保证正确的语义，代价是它会连同其它艺术家的海报一起还原。
      *
-     * 顺序按原始列表走（艺术家图片回到原位），避免把 `[艺术家, 封面]` 重排成 `[封面, 艺术家]`：
-     * 重排会让整份列表与原始列表「不相等」，还会改变没有标准封面时的首图回退结果。
+     * 顺序按**原始布局**放回去：先给每张仍在的封面/封底等图片找回它在原始列表里的位置，再把
+     * 艺术家图片插到「原始位置在它之后的第一张仍在的图片」之前，后方没有锚点则放末尾。
+     *
+     * 这一点不是洁癖：`frontCoverOrFallback()` 在没有标准封面（FrontCover/Other）时会退回
+     * 「第一张图」，布局变了那一页就会显示成另一张图，看起来就是「还原之后图片对应不上了」。
+     * 只按当前顺序就地替换也能把图片找回来，但会把这种文件的首图换掉。
      */
     fun revertAll(
         pictures: List<AudioPicture>,

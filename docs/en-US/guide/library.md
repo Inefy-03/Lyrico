@@ -42,7 +42,7 @@ Removes the folder and its song records from Lyrico's library. Local audio files
 
 ## Artist Poster Folders
 
-The Artists views (list and detail page) prefer **embedded artwork** of the artist picture type. When a song has no such image, Lyrico looks up a poster by **file name** in your artist poster folders. Go to: `Settings` → `Scan Settings` → `Artist Poster Folders`.
+The Artists views (list and detail page) and the single-song editor prefer **embedded artwork** that belongs to that artist. Ownership comes from the picture's **description**: the artist named there is the one it belongs to. Old pictures with no description are treated as belonging to the song's only artist. When one artist has no usable embedded picture, Lyrico looks up a poster by **file name** in your artist poster folders for that artist. Go to: `Settings` → `Scan Settings` → `Artist Poster Folders`.
 
 **Add a folder:** Tap the add button in the top bar, select the folder holding your posters in the system file picker, and grant access. Lyrico reads the posters in it immediately.
 
