@@ -8,39 +8,36 @@ import com.lonx.lyrico.utils.LyricsSearchTextExtractor
 class SongMetadataMapper(
     private val sortKeyUpdater: SortKeyUpdater
 ) {
+    /** Synchronize a complete, successfully read file snapshot, not a partial edit. */
     fun applyAudioTagData(
         old: SongEntity,
         tag: AudioTagData,
         fileLastModified: Long = System.currentTimeMillis()
     ): SongEntity {
-        val lyrics = tag.lyrics ?: old.lyrics
+        val lyrics = tag.lyrics
         return old.copy(
-            title = tag.title ?: old.title,
-            artist = tag.artist ?: old.artist,
-            albumArtist = tag.albumArtist ?: old.albumArtist,
-            album = tag.album ?: old.album,
-            genre = tag.genre ?: old.genre,
-            date = tag.date ?: old.date,
-            trackerNumber = tag.trackNumber ?: old.trackerNumber,
-            discNumber = tag.discNumber ?: old.discNumber,
-            composer = tag.composer ?: old.composer,
-            lyricist = tag.lyricist ?: old.lyricist,
-            comment = tag.comment ?: old.comment,
+            title = tag.title,
+            artist = tag.artist,
+            albumArtist = tag.albumArtist,
+            album = tag.album,
+            genre = tag.genre,
+            date = tag.date,
+            trackerNumber = tag.trackNumber,
+            discNumber = tag.discNumber,
+            composer = tag.composer,
+            lyricist = tag.lyricist,
+            comment = tag.comment,
             lyrics = lyrics,
-            lyricSearchText = if (tag.lyrics != null) {
-                LyricsSearchTextExtractor.toSearchText(lyrics)
-            } else {
-                old.lyricSearchText
-            },
-            language = tag.language ?: old.language,
-            copyright = tag.copyright ?: old.copyright,
-            rating = tag.rating ?: old.rating,
-            replayGainTrackGain = tag.replayGainTrackGain ?: old.replayGainTrackGain,
-            replayGainTrackPeak = tag.replayGainTrackPeak ?: old.replayGainTrackPeak,
-            replayGainAlbumGain = tag.replayGainAlbumGain ?: old.replayGainAlbumGain,
-            replayGainAlbumPeak = tag.replayGainAlbumPeak ?: old.replayGainAlbumPeak,
-            replayGainReferenceLoudness = tag.replayGainReferenceLoudness
-                ?: old.replayGainReferenceLoudness,
+            lyricSearchText = LyricsSearchTextExtractor.toSearchText(lyrics),
+            language = tag.language,
+            copyright = tag.copyright,
+            rating = tag.rating,
+            // These are read back from the saved file; null means the tag was removed.
+            replayGainTrackGain = tag.replayGainTrackGain,
+            replayGainTrackPeak = tag.replayGainTrackPeak,
+            replayGainAlbumGain = tag.replayGainAlbumGain,
+            replayGainAlbumPeak = tag.replayGainAlbumPeak,
+            replayGainReferenceLoudness = tag.replayGainReferenceLoudness,
             fileLastModified = fileLastModified
         ).let(sortKeyUpdater::update)
     }

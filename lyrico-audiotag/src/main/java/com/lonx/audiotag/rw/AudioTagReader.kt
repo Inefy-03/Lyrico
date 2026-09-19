@@ -19,7 +19,8 @@ object AudioTagReader {
     suspend fun read(
         pfd: ParcelFileDescriptor,
         readPictures: Boolean = true,
-        multiValueSeparator: String = "/"
+        multiValueSeparator: String = "/",
+        strict: Boolean = false
     ): AudioTagData {
         return withContext(Dispatchers.IO) {
             try {
@@ -30,7 +31,8 @@ object AudioTagReader {
 
                 // 读取 Metadata
                 val metaFd = FdUtils.getNativeFd(pfd)
-                val metadata = TagLib.getMetadata(metaFd, readPictures) ?: return@withContext AudioTagData()
+                val metadata = TagLib.getMetadata(metaFd, readPictures)
+                    ?: throw IllegalStateException("Unable to read audio metadata")
 
                 // 处理图片
                 val picList = ArrayList<AudioPicture>()
@@ -220,6 +222,7 @@ object AudioTagReader {
                 )
 
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException || strict) throw e
                 Log.e(TAG, "Read error", e)
                 AudioTagData()
             }

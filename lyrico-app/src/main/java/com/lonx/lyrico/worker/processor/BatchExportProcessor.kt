@@ -8,6 +8,7 @@ import com.lonx.audiotag.model.frontCoverOrFallback
 import com.lonx.lyrico.data.model.BatchTaskType
 import com.lonx.lyrico.data.model.entity.BatchTaskEntity
 import com.lonx.lyrico.data.model.entity.BatchTaskItemEntity
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.data.song.tag.AudioTagRepository
 import com.lonx.lyrico.utils.CoverSourceType
 import com.lonx.lyrico.utils.getCoverSourceType
@@ -42,7 +43,7 @@ class BatchExportProcessor(
             throw Exception("Destination folder is not writable")
         }
 
-        val tagData = audioTagRepository.read(item.songUri)
+        val tagData = audioTagRepository.read(item.songUri, AudioTagReadOptions(strict = true))
         val result = when (task.type) {
             BatchTaskType.EXPORT_LYRICS -> exportLyrics(item, tagData.lyrics, directory)
             BatchTaskType.EXPORT_COVER -> {

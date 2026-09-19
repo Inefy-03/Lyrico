@@ -13,6 +13,7 @@ import com.lonx.lyrico.data.model.plugin.PluginCapability
 import com.lonx.lyrico.data.model.plugin.PluginSourceType
 import com.lonx.lyrico.data.model.plugin.defaultPluginFieldProcessConfig
 import com.lonx.lyrico.data.song.library.SongLibraryRepository
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.data.song.tag.AudioTagRepository
 import com.lonx.lyrico.data.repository.SettingsRepository
 import com.lonx.lyrico.domain.song.usecase.PatchSongTagsUseCase
@@ -46,7 +47,7 @@ class MatchLyricsProcessor(
 
         val song = songLibraryRepository.getSongByUri(item.songUri)
             ?: throw BatchTaskSkippedException("Song not found")
-        val currentTag = audioTagRepository.read(song.uri)
+        val currentTag = audioTagRepository.read(song.uri, AudioTagReadOptions(strict = true))
         if (mode == MetadataWriteMode.SUPPLEMENT && !currentTag.lyrics.isNullOrBlank()) {
             throw BatchTaskSkippedException("Lyrics already exist")
         }

@@ -9,6 +9,8 @@ import com.lonx.lyrico.utils.lyrics.document.LyricsDocumentPipeline
 import com.lonx.lyrico.data.model.entity.BatchTaskEntity
 import com.lonx.lyrico.data.model.entity.BatchTaskItemEntity
 import com.lonx.lyrico.data.song.library.SongLibraryRepository
+import com.lonx.lyrico.data.song.tag.AudioTagRepository
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.domain.song.usecase.PatchSongTagsUseCase
 import com.lonx.lyrico.domain.song.usecase.SaveAudioTagsResult
 import com.lonx.lyrico.utils.LyricDecoder
@@ -19,7 +21,8 @@ import kotlinx.serialization.json.Json
 
 class LyricsFormatProcessor(
     private val songLibraryRepository: SongLibraryRepository,
-    private val patchSongTagsUseCase: PatchSongTagsUseCase
+    private val patchSongTagsUseCase: PatchSongTagsUseCase,
+    private val audioTagRepository: AudioTagRepository
 ) : BatchTaskProcessor {
 
     override suspend fun process(
@@ -34,7 +37,7 @@ class LyricsFormatProcessor(
         val song = songLibraryRepository.getSongByUri(item.songUri)
             ?: throw BatchTaskSkippedException("Song not found")
 
-        val lyrics = song.lyrics
+        val lyrics = audioTagRepository.read(song.uri, AudioTagReadOptions(strict = true)).lyrics
         if (lyrics.isNullOrBlank()) {
             throw BatchTaskSkippedException("No lyrics")
         }

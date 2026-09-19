@@ -5,6 +5,7 @@ import com.lonx.lyrico.data.model.entity.SongEntity
 import com.lonx.lyrico.data.song.tag.AudioTagMutation
 import com.lonx.lyrico.data.song.tag.AudioTagMutationFactory
 import com.lonx.lyrico.data.song.tag.AudioTagMutationMode
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.data.song.tag.AudioTagRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -48,7 +49,7 @@ class BatchEditSongsUseCase(
     private val saveAudioTagsUseCase: SaveAudioTagsUseCase
 ) {
     suspend fun editOne(request: BatchTagEditItemRequest): BatchTagEditItemResult {
-        val currentTag = audioTagRepository.read(request.song.uri)
+        val currentTag = audioTagRepository.read(request.song.uri, AudioTagReadOptions(strict = true))
         val editedTag = request.tagDataFactory(request.song, currentTag)
         if (editedTag == currentTag) {
             return BatchTagEditItemResult(

@@ -22,6 +22,7 @@ import com.lonx.lyrico.data.model.plugin.defaultPluginFieldProcessConfig
 import com.lonx.lyrico.data.repository.SettingsRepository
 import com.lonx.lyrico.data.repository.AppLogRepository
 import com.lonx.lyrico.data.song.library.SongLibraryRepository
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.data.song.tag.AudioTagRepository
 import com.lonx.lyrico.domain.song.usecase.PatchSongTagsUseCase
 import com.lonx.lyrico.domain.song.usecase.SaveAudioTagsResult
@@ -77,7 +78,7 @@ class MatchMetadataProcessor(
         onProgress(0.05f)
 
         val separator = config.separator
-        val currentTag = audioTagRepository.read(song.uri)
+        val currentTag = audioTagRepository.read(song.uri, AudioTagReadOptions(strict = true))
 
         val shouldWriteLyrics = when (plan.targetModes[MetadataFieldTarget.LYRICS]) {
             MetadataWriteMode.OVERWRITE -> true

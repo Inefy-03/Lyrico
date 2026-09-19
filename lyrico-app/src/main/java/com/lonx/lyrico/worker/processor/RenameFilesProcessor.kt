@@ -1,13 +1,13 @@
 package com.lonx.lyrico.worker.processor
 
-import com.lonx.audiotag.model.AudioTagData
 import com.lonx.lyrico.data.model.CharacterMappingRule
 import com.lonx.lyrico.data.model.entity.BatchTaskEntity
 import com.lonx.lyrico.data.model.entity.BatchTaskItemEntity
 import com.lonx.lyrico.data.song.library.SongLibraryRepository
+import com.lonx.lyrico.data.song.tag.AudioTagRepository
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.domain.song.usecase.RenameSongResult
 import com.lonx.lyrico.domain.song.usecase.RenameSongUseCase
-import com.lonx.lyrico.utils.ConflictResolver
 import com.lonx.lyrico.utils.FileNameSanitizer
 import com.lonx.lyrico.utils.FormatParser
 import kotlinx.serialization.Serializable
@@ -28,7 +28,8 @@ data class RenameFilesTaskResult(
 
 class RenameFilesProcessor(
     private val songLibraryRepository: SongLibraryRepository,
-    private val renameSongUseCase: RenameSongUseCase
+    private val renameSongUseCase: RenameSongUseCase,
+    private val audioTagRepository: AudioTagRepository
 ) : BatchTaskProcessor {
 
     override suspend fun process(
@@ -43,7 +44,7 @@ class RenameFilesProcessor(
         val song = songLibraryRepository.getSongByUri(item.songUri)
             ?: throw BatchTaskSkippedException("Song not found")
 
-        val tagData = convertToAudioTagData(song)
+        val tagData = audioTagRepository.read(song.uri, AudioTagReadOptions(strict = true))
 
         val tokens = FormatParser.parseFormat(config.renameFormat)
         var newFileName = FormatParser.buildFileName(tokens, tagData)
@@ -82,27 +83,4 @@ class RenameFilesProcessor(
         )
     }
 
-    private fun convertToAudioTagData(song: com.lonx.lyrico.data.model.entity.SongEntity): AudioTagData {
-        return AudioTagData(
-            title = song.title,
-            artist = song.artist,
-            album = song.album,
-            albumArtist = song.albumArtist,
-            genre = song.genre,
-            date = song.date,
-            trackNumber = song.trackerNumber,
-            discNumber = song.discNumber,
-            composer = song.composer,
-            lyricist = song.lyricist,
-            comment = song.comment,
-            lyrics = song.lyrics,
-            copyright = song.copyright,
-            rating = song.rating,
-            fileName = song.fileName,
-            durationMilliseconds = song.durationMilliseconds,
-            bitrate = song.bitrate,
-            sampleRate = song.sampleRate,
-            channels = song.channels
-        )
-    }
 }

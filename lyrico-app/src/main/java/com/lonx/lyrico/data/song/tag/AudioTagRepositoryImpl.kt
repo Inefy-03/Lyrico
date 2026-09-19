@@ -24,7 +24,13 @@ class AudioTagRepositoryImpl(
     override suspend fun read(
         uri: String,
         options: AudioTagReadOptions
-    ): AudioTagData = readLenient(uri, options)
+    ): AudioTagData = if (options.strict) {
+        withContext(Dispatchers.IO) {
+            readFromUri(uri, fileAccess.getDisplayName(uri), strict = true, options = options)
+        }
+    } else {
+        readLenient(uri, options)
+    }
 
     private suspend fun readLenient(
         uri: String,
@@ -34,6 +40,7 @@ class AudioTagRepositoryImpl(
         try {
             readFromUri(uri, displayName, strict = false, options = options)
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Failed to read audio tags: $uri", e)
             logMetadataException("Failed to read audio tags", e, uri)
             AudioTagData(fileName = displayName)
@@ -101,6 +108,7 @@ class AudioTagRepositoryImpl(
 
             AudioTagWriteResult.Success(readStrict(uri))
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             fileAccess.writePermissionFromThrowable(uri, e)?.let { intentSender ->
                 return AudioTagWriteResult.PermissionRequired(intentSender)
             }
@@ -120,7 +128,8 @@ class AudioTagRepositoryImpl(
             return AudioTagReader.read(
                 pfd = descriptor,
                 readPictures = true,
-                multiValueSeparator = options.multiValueSeparator
+                multiValueSeparator = options.multiValueSeparator,
+                strict = strict
             ).copy(fileName = displayName)
         }
         return readFromStreamCache(uri, displayName, strict, options)
@@ -157,7 +166,8 @@ class AudioTagRepositoryImpl(
                 return AudioTagReader.read(
                     pfd = descriptor,
                     readPictures = true,
-                    multiValueSeparator = options.multiValueSeparator
+                    multiValueSeparator = options.multiValueSeparator,
+                    strict = strict
                 ).copy(fileName = displayName)
             }
         } finally {

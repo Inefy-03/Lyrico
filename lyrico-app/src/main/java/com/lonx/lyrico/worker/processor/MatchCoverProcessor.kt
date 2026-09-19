@@ -9,6 +9,7 @@ import com.lonx.lyrico.data.model.metadata.MetadataFieldTarget
 import com.lonx.lyrico.data.model.metadata.MetadataWriteMode
 import com.lonx.lyrico.data.model.plugin.PluginSourceType
 import com.lonx.lyrico.data.song.library.SongLibraryRepository
+import com.lonx.lyrico.data.song.tag.AudioTagReadOptions
 import com.lonx.lyrico.data.song.tag.AudioTagRepository
 import com.lonx.lyrico.domain.song.usecase.PatchSongTagsUseCase
 import com.lonx.lyrico.domain.song.usecase.SaveAudioTagsResult
@@ -38,7 +39,7 @@ class MatchCoverProcessor(
 
         val song = songLibraryRepository.getSongByUri(item.songUri)
             ?: throw BatchTaskSkippedException("Song not found")
-        val currentTag = audioTagRepository.read(song.uri)
+        val currentTag = audioTagRepository.read(song.uri, AudioTagReadOptions(strict = true))
         if (
             mode == MetadataWriteMode.SUPPLEMENT &&
             (!currentTag.picUrl.isNullOrBlank() || currentTag.pictures.isNotEmpty())
