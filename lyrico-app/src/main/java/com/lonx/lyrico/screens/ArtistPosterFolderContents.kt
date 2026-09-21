@@ -50,6 +50,7 @@ internal fun ArtistPosterFolderContents(
     folder: ArtistPosterFolder,
     revision: Long,
     isLoading: Boolean,
+    hasError: Boolean,
     padding: PaddingValues,
     scrollBehavior: ScrollBehavior
 ) {
@@ -88,6 +89,16 @@ internal fun ArtistPosterFolderContents(
         if (isLoading) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(12.dp))
+            }
+        }
+        if (hasError) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    stringResource(R.string.artist_poster_folder_error),
+                    color = MiuixTheme.colorScheme.error,
+                    fontSize = MiuixTheme.textStyles.footnote1.fontSize,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
+                )
             }
         }
         if (files.isEmpty() && !isLoading) {

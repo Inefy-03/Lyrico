@@ -6,9 +6,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lonx.lyrico.data.repository.SettingsRepository
 import org.koin.compose.koinInject
 
-/** The configured artist poster folders, plus the revision that changes when they are refreshed. */
+/** The configured artist poster folder, plus the revision that changes when it is refreshed. */
 internal data class ArtistPosterSource(
-    val folders: List<String> = emptyList(),
+    val folder: String? = null,
     val revision: Long = 0L
 )
 
@@ -16,13 +16,13 @@ internal data class ArtistPosterSource(
  * Reads the artist poster settings for the composables that render artist artwork.
  *
  * Only artist artwork needs them, so `enabled = false` keeps ordinary covers free of the
- * subscription and lets them be requested without waiting for the folder list.
+ * subscription and lets them be requested without waiting for the folder setting.
  */
 @Composable
 internal fun rememberArtistPosterSource(enabled: Boolean = true): ArtistPosterSource {
     if (!enabled) return ArtistPosterSource()
     val settings: SettingsRepository = koinInject()
-    val folders by settings.artistPosterFolders.collectAsStateWithLifecycle(initialValue = emptyList())
+    val folder by settings.artistPosterFolder.collectAsStateWithLifecycle(initialValue = null)
     val revision by settings.artistPosterRevision.collectAsStateWithLifecycle(initialValue = 0L)
-    return ArtistPosterSource(folders = folders, revision = revision)
+    return ArtistPosterSource(folder = folder, revision = revision)
 }

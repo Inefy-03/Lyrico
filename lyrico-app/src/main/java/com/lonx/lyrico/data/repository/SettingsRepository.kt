@@ -23,11 +23,11 @@ import kotlinx.coroutines.flow.Flow
 
 
 interface SettingsRepository {
-    val artistPosterFolders: Flow<List<String>>
+    val artistPosterFolder: Flow<String?>
     val artistPosterRevision: Flow<Long>
     suspend fun refreshArtistPosters()
-    suspend fun addArtistPosterFolder(uri: String)
-    suspend fun removeArtistPosterFolder(uri: String)
+    suspend fun setArtistPosterFolder(uri: String)
+    suspend fun clearArtistPosterFolder()
     val batchMatchConfig: Flow<BatchMatchConfig>
     val metadataFieldWriteRules: Flow<List<PluginMetadataFieldWriteRule>>
     val sourceSettingsByIdFlow: Flow<Map<String, SourceRuntimeConfig>>

@@ -32,7 +32,7 @@ data class ArtistPosterFolder(
 )
 
 data class ArtistPosterFoldersUiState(
-    val folders: List<ArtistPosterFolder> = emptyList(),
+    val folder: ArtistPosterFolder? = null,
     val isLoading: Boolean = true,
     val error: Boolean = false,
     val revision: Long = 0L
@@ -49,15 +49,15 @@ class ArtistPosterFoldersViewModel(
     init {
         viewModelScope.launch {
             combine(
-                settings.artistPosterFolders,
+                settings.artistPosterFolder,
                 settings.artistPosterRevision,
                 libraryIndexRepository.observeArtists()
-            ) { folders, revision, artists -> Triple(folders, revision, artists) }
-                .collectLatest { (folders, revision, artists) ->
+            ) { folder, revision, artists -> Triple(folder, revision, artists) }
+                .collectLatest { (folder, revision, artists) ->
                     _uiState.update { it.copy(isLoading = true) }
                     val artistNames = artists.map { it.name }
-                    val entries = withContext(Dispatchers.IO) {
-                        folders.map { folder ->
+                    val entry = withContext(Dispatchers.IO) {
+                        folder?.let {
                             val uri = folder.toUri()
                             val posters = readPosters(uri)
                             ArtistPosterFolder(
@@ -69,7 +69,7 @@ class ArtistPosterFoldersViewModel(
                             )
                         }
                     }
-                    _uiState.update { it.copy(folders = entries, isLoading = false, revision = revision) }
+                    _uiState.update { it.copy(folder = entry, isLoading = false, revision = revision) }
                 }
         }
     }
@@ -103,13 +103,13 @@ class ArtistPosterFoldersViewModel(
     }
 
     fun addFolder(uri: Uri) = update {
-        settings.addArtistPosterFolder(uri.toString())
+        settings.setArtistPosterFolder(uri.toString())
         settings.refreshArtistPosters()
     }
 
-    fun removeFolder(uri: String) = update {
+    fun removeFolder() = update {
         // Grants can be shared with the music library; removing a poster folder only removes its registration.
-        settings.removeArtistPosterFolder(uri)
+        settings.clearArtistPosterFolder()
     }
 
     fun refresh() = update { settings.refreshArtistPosters() }

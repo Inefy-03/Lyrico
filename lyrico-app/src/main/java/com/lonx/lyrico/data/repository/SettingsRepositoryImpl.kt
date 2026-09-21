@@ -61,6 +61,14 @@ import kotlin.collections.first
 
 internal val Context.settingsDataStore by preferencesDataStore(name = "settings")
 
+internal fun decodeArtistPosterFolder(value: String?): String? =
+    runCatching { Json.decodeFromString<List<String>>(value ?: "[]") }
+        .getOrDefault(emptyList())
+        .firstOrNull()
+
+internal fun encodeArtistPosterFolder(uri: String?): String =
+    Json.encodeToString(listOfNotNull(uri))
+
 object SettingsDefaults {
     const val MONET_ENABLE: Boolean = false
     const val FLOATING_BOTTOM_BAR_ENABLED: Boolean = true
@@ -112,22 +120,19 @@ class SettingsRepositoryImpl(private val context: Context) : SettingsRepository 
             it[artistPosterRevisionKey] = (it[artistPosterRevisionKey] ?: 0L) + 1L
         }
     }
-    override val artistPosterFolders: Flow<List<String>> = context.settingsDataStore.data.map {
-        decodePosterFolders(it[artistPosterFoldersKey])
+    override val artistPosterFolder: Flow<String?> = context.settingsDataStore.data.map {
+        decodeArtistPosterFolder(it[artistPosterFoldersKey])
     }
 
-    private fun decodePosterFolders(value: String?): List<String> =
-        runCatching { Json.decodeFromString<List<String>>(value ?: "[]") }.getOrDefault(emptyList())
-
-    override suspend fun addArtistPosterFolder(uri: String) {
+    override suspend fun setArtistPosterFolder(uri: String) {
         context.settingsDataStore.edit {
-            it[artistPosterFoldersKey] = Json.encodeToString((decodePosterFolders(it[artistPosterFoldersKey]) + uri).distinct())
+            it[artistPosterFoldersKey] = encodeArtistPosterFolder(uri)
         }
     }
 
-    override suspend fun removeArtistPosterFolder(uri: String) {
+    override suspend fun clearArtistPosterFolder() {
         context.settingsDataStore.edit {
-            it[artistPosterFoldersKey] = Json.encodeToString(decodePosterFolders(it[artistPosterFoldersKey]) - uri)
+            it[artistPosterFoldersKey] = encodeArtistPosterFolder(null)
         }
     }
 

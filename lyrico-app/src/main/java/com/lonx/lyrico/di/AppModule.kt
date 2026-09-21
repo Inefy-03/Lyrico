@@ -297,7 +297,11 @@ val appModule = module {
     viewModel { (artistId: Long) ->
         ArtistDetailViewModel(
             libraryIndexRepository = get(),
-            artistId = artistId
+            artistId = artistId,
+            audioTagRepository = get(),
+            overwriteSongTagsUseCase = get(),
+            settingsRepository = get(),
+            application = get()
         )
     }
     viewModel { ArtistLibraryViewModel(get(), get(), get()) }

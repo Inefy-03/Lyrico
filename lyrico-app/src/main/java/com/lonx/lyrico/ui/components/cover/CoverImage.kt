@@ -58,7 +58,7 @@ fun CoverImage(
             fallbackToAny = fallbackToAny,
             candidates = candidates,
             artistName = artistName,
-            artistPosterFolders = posterSource.folders,
+            artistPosterFolders = listOfNotNull(posterSource.folder),
             artistPosterRevision = posterSource.revision
         )
     }

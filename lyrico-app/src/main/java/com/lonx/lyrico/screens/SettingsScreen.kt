@@ -125,7 +125,7 @@ fun SettingsScreen(
     val folderViewModel: FolderManagerViewModel = koinViewModel()
     val folderUiState by folderViewModel.uiState.collectAsStateWithLifecycle()
     val settingsRepository: SettingsRepository = koinInject()
-    val artistPosterFolders by settingsRepository.artistPosterFolders.collectAsStateWithLifecycle(initialValue = emptyList())
+    val artistPosterFolder by settingsRepository.artistPosterFolder.collectAsStateWithLifecycle(initialValue = null)
 
     val lyricFormat = settingsUiState.lyricFormat
     val artistSeparator = settingsUiState.separator
@@ -491,7 +491,13 @@ fun SettingsScreen(
                     )
                     ArrowPreference(
                         title = stringResource(R.string.artist_poster_folders),
-                        summary = stringResource(R.string.artist_poster_folders_count, artistPosterFolders.size),
+                        summary = stringResource(
+                            if (artistPosterFolder == null) {
+                                R.string.artist_poster_folder_not_selected
+                            } else {
+                                R.string.artist_poster_folder_selected
+                            }
+                        ),
                         onClick = { navigator.navigate(ArtistPosterFoldersDestination()) }
                     )
                     SwitchPreference(

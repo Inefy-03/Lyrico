@@ -1,19 +1,10 @@
 package com.lonx.lyrico.screens
 
 import android.content.Intent
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
@@ -23,16 +14,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lonx.lyrico.R
-import com.lonx.lyrico.ui.components.FolderManagementItem
 import com.lonx.lyrico.ui.components.blur.BlurredTopBar
 import com.lonx.lyrico.ui.components.blur.blurSource
 import com.lonx.lyrico.ui.components.blur.rememberBarBlurBackdrop
 import com.lonx.lyrico.ui.components.scaffoldContentPadding
-import com.lonx.lyrico.viewmodel.ArtistPosterFolder
 import com.lonx.lyrico.viewmodel.ArtistPosterFoldersUiState
 import com.lonx.lyrico.viewmodel.ArtistPosterFoldersViewModel
 import com.ramcosta.composedestinations.annotation.Destination
@@ -44,6 +32,7 @@ import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -68,12 +57,8 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
             viewModel.addFolder(it)
         }
     }
-    var selectedFolderUri by rememberSaveable { mutableStateOf<String?>(null) }
-    val selectedFolder = state.folders.find { it.uri == selectedFolderUri }
-    var currentFolderUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var showRemoveDialog by rememberSaveable { mutableStateOf(false) }
     var showHelp by rememberSaveable { mutableStateOf(false) }
-    val currentFolder = state.folders.find { it.uri == currentFolderUri }
-    BackHandler(currentFolder != null) { currentFolderUri = null }
     val scrollBehavior = MiuixScrollBehavior()
     val topBarBackdrop = rememberBarBlurBackdrop()
 
@@ -81,25 +66,48 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
         topBar = {
             BlurredTopBar(backdrop = topBarBackdrop) {
                 SmallTopAppBar(
-                    title = currentFolder?.name ?: stringResource(R.string.artist_poster_folders),
+                    title = stringResource(R.string.artist_poster_folders),
                     color = Color.Transparent,
                     defaultWindowInsetsPadding = false,
                     navigationIcon = {
-                        IconButton(onClick = { if (currentFolder != null) currentFolderUri = null else navigator.navigateUp() }) {
+                        IconButton(onClick = navigator::navigateUp) {
                             Icon(MiuixIcons.Back, stringResource(R.string.artist_poster_back))
                         }
                     },
                     actions = {
-                        if (currentFolder == null) {
+                        if (state.folder == null) {
                             IconButton(onClick = { picker.launch(null) }) {
                                 Icon(MiuixIcons.AddFolder, stringResource(R.string.artist_poster_folder_add))
                             }
                         }
-                        OverlayIconDropdownMenu(entry = DropdownEntry(items = listOf(
-                            DropdownItem(text = stringResource(R.string.action_refresh_folder), onClick = viewModel::refresh),
-                            DropdownItem(text = stringResource(R.string.artist_poster_naming), onClick = { showHelp = true })
-                        ))) {
-                            Icon(MiuixIcons.More, stringResource(R.string.cd_more_actions))
+                        IconButton(onClick = { showHelp = true }) {
+                            Icon(
+                                MiuixIcons.Info,
+                                stringResource(R.string.artist_poster_naming)
+                            )
+                        }
+                        if (state.folder != null) {
+                            OverlayIconDropdownMenu(
+                                entry = DropdownEntry(
+                                    items = listOf(
+                                        DropdownItem(
+                                            text = stringResource(R.string.action_refresh_folder),
+                                            onClick = viewModel::refresh
+                                        ),
+                                        DropdownItem(
+                                            text = stringResource(R.string.artist_poster_folder_change),
+                                            onClick = { picker.launch(null) }
+                                        ),
+                                        DropdownItem(
+                                            text = stringResource(R.string.folder_action_remove),
+                                            onClick = { showRemoveDialog = true }
+                                        )
+                                    )
+                                ),
+                                enabled = !state.isLoading
+                            ) {
+                                Icon(MiuixIcons.More, stringResource(R.string.cd_more_actions))
+                            }
                         }
                     },
                     scrollBehavior = scrollBehavior
@@ -107,36 +115,21 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
             }
         }
     ) { padding ->
-        // Opening a folder slides like every other page of the app, back reverses it.
-        AnimatedContent(
-            targetState = currentFolder,
-            label = "ArtistPosterFolderContent",
-            transitionSpec = {
-                val openFolder = targetState != null
-                val animation = tween<IntOffset>(durationMillis = 300, easing = FastOutSlowInEasing)
-                val enter = slideInHorizontally(animationSpec = animation) { if (openFolder) it else -it }
-                val exit = slideOutHorizontally(animationSpec = animation) { if (openFolder) -it else it }
-                (enter togetherWith exit).using(SizeTransform(clip = false))
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .blurSource(topBarBackdrop)
-        ) { folder ->
+        Box(Modifier.fillMaxSize().blurSource(topBarBackdrop)) {
+            val folder = state.folder
             if (folder != null) {
                 ArtistPosterFolderContents(
                     folder = folder,
                     revision = state.revision,
                     isLoading = state.isLoading,
+                    hasError = state.error,
                     padding = scaffoldContentPadding(padding),
                     scrollBehavior = scrollBehavior
                 )
             } else {
-                ArtistPosterFolderList(
+                ArtistPosterFolderEmptyState(
                     state = state,
-                    onAddFolder = { picker.launch(null) },
-                    onOpenFolder = { currentFolderUri = it.uri },
-                    onRemoveFolder = { selectedFolderUri = it.uri },
-                    onRefresh = viewModel::refresh,
+                    onChooseFolder = { picker.launch(null) },
                     padding = scaffoldContentPadding(padding),
                     scrollBehavior = scrollBehavior
                 )
@@ -159,14 +152,15 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
                 )
             )
         }
-        if (selectedFolder != null) {
+        val folder = state.folder
+        if (showRemoveDialog && folder != null) {
             WindowDialog(
                 title = stringResource(R.string.dialog_remove_folder_title),
                 show = true,
-                onDismissRequest = { selectedFolderUri = null }
+                onDismissRequest = { showRemoveDialog = false }
             ) {
                 Column {
-                    Text(selectedFolder.path, modifier = Modifier.fillMaxWidth())
+                    Text(folder.path, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(12.dp))
                     Text(
                         stringResource(R.string.artist_poster_folder_remove_tip),
@@ -177,15 +171,15 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween) {
                         TextButton(
                             text = stringResource(R.string.cancel),
-                            onClick = { selectedFolderUri = null },
+                            onClick = { showRemoveDialog = false },
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(20.dp))
                         TextButton(
                             text = stringResource(R.string.confirm),
                             onClick = {
-                                viewModel.removeFolder(selectedFolder.uri)
-                                selectedFolderUri = null
+                                viewModel.removeFolder()
+                                showRemoveDialog = false
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColorsPrimary()
@@ -198,12 +192,9 @@ fun ArtistPosterFoldersScreen(navigator: DestinationsNavigator) {
 }
 
 @Composable
-private fun ArtistPosterFolderList(
+private fun ArtistPosterFolderEmptyState(
     state: ArtistPosterFoldersUiState,
-    onAddFolder: () -> Unit,
-    onOpenFolder: (ArtistPosterFolder) -> Unit,
-    onRemoveFolder: (ArtistPosterFolder) -> Unit,
-    onRefresh: () -> Unit,
+    onChooseFolder: () -> Unit,
     padding: PaddingValues,
     scrollBehavior: ScrollBehavior
 ) {
@@ -233,40 +224,18 @@ private fun ArtistPosterFolderList(
                 )
             }
         }
-        if (state.isLoading && state.folders.isEmpty()) {
+        if (state.isLoading && state.folder == null) {
             item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(12.dp)) }
-        } else if (state.folders.isEmpty()) {
+        } else if (state.folder == null) {
             item {
                 Card(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                     BasicComponent(
                         title = stringResource(R.string.artist_poster_folder_add),
                         summary = stringResource(R.string.artist_poster_folders_empty),
-                        onClick = onAddFolder
+                        onClick = onChooseFolder
                     )
                 }
             }
-        }
-        items(state.folders, key = { it.uri }) { folder ->
-            FolderManagementItem(
-                name = folder.name,
-                path = folder.path,
-                status = when {
-                    state.isLoading -> stringResource(R.string.folder_scanning)
-                    folder.posters == null -> stringResource(R.string.artist_poster_folder_unavailable)
-                    else -> stringResource(
-                        R.string.artist_poster_folder_status,
-                        folder.posters.size,
-                        folder.matchedPosterCount
-                    )
-                },
-                actions = DropdownEntry(items = listOf(
-                    DropdownItem(text = stringResource(R.string.action_refresh_folder), onClick = onRefresh),
-                    DropdownItem(text = stringResource(R.string.folder_action_remove), onClick = { onRemoveFolder(folder) })
-                )),
-                enabled = !state.isLoading,
-                isLoading = state.isLoading,
-                onClick = { onOpenFolder(folder) }
-            )
         }
         item { Spacer(Modifier.height(12.dp)) }
     }

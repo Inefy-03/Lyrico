@@ -239,7 +239,7 @@ fun EditMetadataScreen(
         fallbackToAny = false,
         skipEmbeddedPictures = true,
         artistName = artistName.takeIf { it.isNotBlank() },
-        artistPosterFolders = artistPosterSource.folders,
+        artistPosterFolders = listOfNotNull(artistPosterSource.folder),
         artistPosterRevision = artistPosterSource.revision
     )
     val snackbarHostState = remember { SnackbarHostState() }
